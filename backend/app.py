@@ -69,10 +69,16 @@ async def startup_event():
     if success:
         log.info("✅ ML models loaded and ready.")
     else:
-        log.warning(
-            "⚠️ ML models not found. Run 'python backend/train.py' to train them. "
-            "The API will return 503 on /predict until models are available."
-        )
+        log.warning("⚠️ ML models not found or incompatible. Training new models automatically...")
+        import subprocess
+        try:
+            subprocess.run(["python", "-m", "backend.train"], check=True)
+            if load_models():
+                log.info("✅ ML models newly trained and successfully loaded.")
+            else:
+                log.error("❌ On-the-fly training finished but models still failed to load.")
+        except Exception as e:
+            log.error("❌ Failed to train models automatically: %s", e)
 
 
 # ── REST API Endpoints ─────────────────────────────────────────────────────
