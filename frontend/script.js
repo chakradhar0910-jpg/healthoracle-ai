@@ -1,7 +1,7 @@
 // HealthOracle AI - Hospital Pre-Screening Controller & Diagnostic Engine
 
 document.addEventListener("DOMContentLoaded", () => {
-    const BACKEND_URL = "http://127.0.0.1:8000";
+    const BACKEND_URL = "https://healthoracle-ai.onrender.com";
     let isServerOnline = false;
 
     // DOM Elements - Navigation Tabs

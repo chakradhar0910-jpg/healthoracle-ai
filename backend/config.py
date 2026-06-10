@@ -47,8 +47,6 @@ FORCE_OCR_MOCK = os.getenv("HEALTHORACLE_FORCE_OCR_MOCK", "false").lower() in ("
 TESSERACT_CMD = os.getenv("HEALTHORACLE_TESSERACT_CMD", "")
 
 # ── Gemini LLM Settings ───────────────────────────────────────────────────
-GEMINI_API_KEY = os.getenv(
-    "HEALTHORACLE_GEMINI_API_KEY", 
-    ""
-)
-
+# Set via environment variable or .env file — NEVER hardcode keys here
+# export HEALTHORACLE_GEMINI_API_KEY="your-key-here"
+GEMINI_API_KEY = os.getenv("HEALTHORACLE_GEMINI_API_KEY", "")
