@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: healthoracle-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - HEALTHORACLE_API_HOST=0.0.0.0
+      - HEALTHORACLE_API_PORT=8000
+      - HEALTHORACLE_LOG_LEVEL=INFO
+      - HEALTHORACLE_CORS_ORIGINS=*
+      - HEALTHORACLE_CORS_ALLOW_CREDENTIALS=false
+    volumes:
+      - ./backend/models:/app/backend/models
+      - ./backend/health_oracle.db:/app/backend/health_oracle.db
+      - ./logs:/app/logs
+    restart: always
