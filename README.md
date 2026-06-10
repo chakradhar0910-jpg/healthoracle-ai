@@ -7,6 +7,8 @@
 **HealthOracle AI** is an intelligent health risk prediction system that analyzes patient data (symptoms, lifestyle, biometrics, lab values) to **predict Diabetes and Cardiovascular disease risk** with ML-powered confidence scores and clinical recommendations.
 
 ---
+##live demo 
+           https://healthoracle-ai-1.onrender.com
 
 ## 🛠 Tech Stack
 
