@@ -49,9 +49,9 @@ DATASET_DIR.mkdir(parents=True, exist_ok=True)
 PIMA_URL = (
     "https://raw.githubusercontent.com/jbrownlee/Datasets/master/pima-indians-diabetes.data.csv"
 )
-# UCI Cleveland Heart Disease (303 rows) — from UCI ML Repo CSV mirror
+# UCI Cleveland Heart Disease (303 rows) — from stable GitHub mirror
 HEART_URL = (
-    "https://raw.githubusercontent.com/YBIFoundation/Dataset/main/Heart%20Disease.csv"
+    "https://raw.githubusercontent.com/sharmaroshan/Heart-UCI-Dataset/master/heart.csv"
 )
 
 RANDOM_STATE = 42
@@ -242,16 +242,45 @@ def load_pima_diabetes() -> pd.DataFrame:
     """
     PIMA Indians Diabetes dataset (768 rows, 8 features).
     Maps columns to our 16-feature schema.
+    Uses local cache file if offline or download fails.
     """
+    cache_path = DATASET_DIR / "pima_raw_cache.csv"
+    csv_text = None
+    
     log.info("📥 Downloading PIMA Indians Diabetes dataset...")
     try:
         resp = requests.get(PIMA_URL, timeout=15)
         resp.raise_for_status()
+        csv_text = resp.text
+        # Write to cache
+        try:
+            with open(cache_path, "w", encoding="utf-8") as f:
+                f.write(csv_text)
+            log.info("  💾 Cached PIMA dataset locally.")
+        except Exception as cache_err:
+            log.warning("  ⚠️ Failed to cache PIMA dataset: %s", cache_err)
+    except Exception as e:
+        log.warning("  ⚠️ PIMA download failed (%s). Checking local cache...", e)
+        if cache_path.exists():
+            try:
+                with open(cache_path, "r", encoding="utf-8") as f:
+                    csv_text = f.read()
+                log.info("  ✅ Loaded PIMA dataset from local cache.")
+            except Exception as read_err:
+                log.error("  ❌ Failed to read PIMA cache: %s", read_err)
+        else:
+            log.warning("  ⚠️ No local cache file found.")
+
+    if csv_text is None:
+        log.warning("  ⚠️ PIMA dataset not available — will use synthetic only.")
+        return pd.DataFrame()
+
+    try:
         raw_cols = [
             "pregnancies", "glucose", "diastolic", "skin_thickness",
             "insulin", "bmi", "dpf", "age", "target"
         ]
-        df = pd.read_csv(io.StringIO(resp.text), header=None, names=raw_cols)
+        df = pd.read_csv(io.StringIO(csv_text), header=None, names=raw_cols)
         log.info("  ✅ PIMA loaded: %d rows", len(df))
 
         # Map to our schema — fill unavailable features with population defaults
@@ -274,22 +303,51 @@ def load_pima_diabetes() -> pd.DataFrame:
         out["sym_numbness"]    = 0
         out["target"]          = df["target"]
         return out.dropna()
-    except Exception as e:
-        log.warning("  ⚠️  PIMA download failed (%s) — will use synthetic only.", e)
+    except Exception as parse_err:
+        log.error("  ❌ Failed to parse PIMA dataset: %s", parse_err)
         return pd.DataFrame()
 
 
 def load_uci_heart() -> pd.DataFrame:
     """
-    UCI/YBI Heart Disease dataset.
+    UCI Heart Disease dataset.
     Maps columns to our 18-feature schema.
+    Uses local cache file if offline or download fails.
     """
+    cache_path = DATASET_DIR / "heart_raw_cache.csv"
+    csv_text = None
+
     log.info("📥 Downloading UCI Heart Disease dataset...")
     try:
         resp = requests.get(HEART_URL, timeout=15)
         resp.raise_for_status()
-        df = pd.read_csv(io.StringIO(resp.text))
-        log.info("  ✅ Heart dataset loaded: %d rows, cols: %s", len(df), list(df.columns)[:8])
+        csv_text = resp.text
+        # Write to cache
+        try:
+            with open(cache_path, "w", encoding="utf-8") as f:
+                f.write(csv_text)
+            log.info("  💾 Cached Heart dataset locally.")
+        except Exception as cache_err:
+            log.warning("  ⚠️ Failed to cache Heart dataset: %s", cache_err)
+    except Exception as e:
+        log.warning("  ⚠️ Heart download failed (%s). Checking local cache...", e)
+        if cache_path.exists():
+            try:
+                with open(cache_path, "r", encoding="utf-8") as f:
+                    csv_text = f.read()
+                log.info("  ✅ Loaded Heart dataset from local cache.")
+            except Exception as read_err:
+                log.error("  ❌ Failed to read Heart cache: %s", read_err)
+        else:
+            log.warning("  ⚠️ No local cache file found.")
+
+    if csv_text is None:
+        log.warning("  ⚠️ Heart dataset not available — will use synthetic only.")
+        return pd.DataFrame()
+
+    try:
+        df = pd.read_csv(io.StringIO(csv_text))
+        log.info("  ✅ Heart dataset loaded: %d rows", len(df))
 
         # Normalise column names
         df.columns = df.columns.str.lower().str.strip().str.replace(" ", "_")
@@ -301,7 +359,7 @@ def load_uci_heart() -> pd.DataFrame:
                 target_col = c
                 break
         if target_col is None:
-            log.warning("  ⚠️  Could not identify target column in heart dataset.")
+            log.warning("  ⚠️ Could not identify target column in heart dataset.")
             return pd.DataFrame()
 
         out = pd.DataFrame()
@@ -335,8 +393,8 @@ def load_uci_heart() -> pd.DataFrame:
         out["target"]           = (df[target_col] > 0).astype(int)   # Binarise
 
         return out.dropna()
-    except Exception as e:
-        log.warning("  ⚠️  Heart dataset download failed (%s) — will use synthetic only.", e)
+    except Exception as parse_err:
+        log.error("  ❌ Failed to parse Heart dataset: %s", parse_err)
         return pd.DataFrame()
 
 

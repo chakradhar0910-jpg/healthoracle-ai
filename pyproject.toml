@@ -1,0 +1,27 @@
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = "-ra -q"
+testpaths = [
+    "tests",
+]
+pythonpath = [
+    ".",
+]
+
+[tool.black]
+line-length = 100
+target-version = ['py311']
+exclude = '''
+/(
+    \.git
+  | \.venv
+  | _build
+  | build
+  | dist
+)/
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 100
+multi_line_output = 3
