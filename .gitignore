@@ -9,10 +9,6 @@ build/
 .eggs/
 *.egg
 
-# Config with secrets — use .env.example as template
-backend/config.py
-
-
 # Virtual environments
 venv/
 .venv/
