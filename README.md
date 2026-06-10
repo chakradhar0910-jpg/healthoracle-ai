@@ -1,163 +1,195 @@
-# 🧠 HealthOracle AI  
-### *Predict Before It Hurts*
+# 🧠 HealthOracle AI — Clinical Pre-Screening Suite
+### *Predict Before It Hurts* — v4.0 Hospital Grade
 
 ---
 
-## 📌 Overview  
-**HealthOracle AI** is an intelligent health risk prediction system that analyzes user data (symptoms, lifestyle, and medical indicators) to **predict potential diseases early** and provide preventive suggestions.
-
-The goal is to shift healthcare from **reactive → proactive**, helping users take action *before* conditions become severe.
+## 📌 Overview
+**HealthOracle AI** is an intelligent health risk prediction system that analyzes patient data (symptoms, lifestyle, biometrics, lab values) to **predict Diabetes and Cardiovascular disease risk** with ML-powered confidence scores and clinical recommendations.
 
 ---
 
-## 🚀 Problem Statement  
-- Many diseases are detected **too late**  
-- People ignore early symptoms  
-- Lack of accessible early-risk analysis tools  
+## 🛠 Tech Stack
 
-👉 This leads to:
-- Increased healthcare costs  
-- Severe health complications  
-- Preventable deaths  
-
----
-
-## 💡 Solution  
-HealthOracle AI:
-- Predicts possible health risks using ML  
-- Provides **confidence scores**  
-- Suggests **preventive actions**  
-- Helps users make **informed decisions early**
+| Layer | Technology |
+|-------|-----------|
+| Frontend | HTML5, Vanilla CSS, Vanilla JS (no framework) |
+| Backend | Python · FastAPI · Uvicorn |
+| ML Models | scikit-learn (Random Forest + GradientBoosting + LR Ensemble) |
+| Data | PIMA Indians Diabetes + UCI Cleveland Heart + Synthetic augmentation |
+| Feature Scaling | StandardScaler (saved with model) |
+| Class Balance | SMOTE (imbalanced-learn) |
 
 ---
 
-## ⚙️ Features  
+## 📂 Project Structure
 
-### 🧾 Input System
-- Age, gender  
-- Symptoms (fever, fatigue, etc.)  
-- Lifestyle (sleep, diet, smoking, etc.)
-
-### 🤖 AI Prediction
-- Machine Learning model predicts:
-  - Diabetes risk  
-  - Heart disease risk  
-  - Other conditions (extendable)
-
-### 📊 Output
-- Risk level (Low / Medium / High)  
-- Confidence score  
-- Disease probability  
-
-### 💊 Recommendations
-- Preventive measures  
-- Lifestyle improvements  
-- When to consult a doctor  
-
----
-
-## 🛠 Tech Stack  
-
-### 🔹 Frontend
-- HTML, CSS, JavaScript *(or React)*  
-
-### 🔹 Backend
-- Python  
-- FastAPI / Flask  
-
-### 🔹 Machine Learning
-- Scikit-learn  
-- Pandas, NumPy  
-
-### 🔹 Optional
-- TensorFlow / PyTorch (advanced models)
-
----
-
-## 🧠 How It Works  
-
-1. User inputs health data  
-2. Data is preprocessed  
-3. ML model analyzes patterns  
-4. Prediction is generated  
-5. Results + suggestions displayed  
-
----
-## 📂 Project Structure  
-
+```
 HealthOracle-AI/
 │
 ├── backend/
-│ ├── model.py
-│ ├── app.py
-│ └── utils.py
+│   ├── __init__.py        # Python package marker
+│   ├── app.py             # FastAPI entry point + CORS + endpoints
+│   ├── model.py           # ML model singleton loader + prediction
+│   ├── schemas.py         # Pydantic request/response schemas
+│   ├── train.py           # Training pipeline (real data + synthetic)
+│   ├── utils.py           # Feature engineering + recommendations
+│   └── models/            # Trained .pkl files (auto-generated)
+│       ├── diabetes_model.pkl
+│       ├── diabetes_scaler.pkl
+│       ├── heart_model.pkl
+│       ├── heart_scaler.pkl
+│       └── model_meta.json
+│
+├── dataset/               # Auto-generated training datasets
+│   ├── diabetes_training.csv
+│   └── heart_training.csv
 │
 ├── frontend/
-│ ├── index.html
-│ ├── styles.css
-│ └── script.js
+│   ├── index.html         # Main app shell (3-step form + results dashboard)
+│   ├── styles.css         # Apple-inspired glassmorphism dark UI
+│   └── script.js          # Form logic + local inference fallback + API calls
 │
-├── dataset/
-│ └── health_data.csv
-│
-├── README.md
-└── requirements.txt
-
+├── requirements.txt
+└── README.md
+```
 
 ---
 
-## ⚡ Installation & Setup  
+## ⚡ Quick Start
 
+### Prerequisites
+- Python 3.9+
+- pip
+
+### 1. Install Dependencies
 ```bash
-# Clone repository
-git clone https://github.com/your-username/HealthOracle-AI.git
-
-# Navigate to project
-cd HealthOracle-AI
-
-# Install dependencies
 pip install -r requirements.txt
+```
 
-# Run backend
-uvicorn app:app --reload
+### 2. Train the ML Models
+```bash
+python backend/train.py
+```
+This will:
+- Download the real **PIMA Indians Diabetes** dataset (~768 rows)
+- Download the real **UCI Heart Disease** dataset (~303 rows)  
+- Generate **2,000 synthetic rows** per disease with realistic medical distributions
+- Train a **VotingClassifier ensemble** (Random Forest + Gradient Boosting + Logistic Regression)
+- Print accuracy, ROC-AUC, and 5-fold cross-validation scores
+- Save models to `backend/models/`
 
-# Open frontend
-# (just open index.html in browser)
-📊 Example Output
-Prediction: High Risk of Diabetes  
-Confidence: 82%  
+### 3. Start the API Server
+```bash
+uvicorn backend.app:app --reload --host 127.0.0.1 --port 8000
+```
 
-Suggestions:
-- Reduce sugar intake  
-- Exercise regularly  
-- Consult a doctor within 2 weeks  
-🧪 Future Enhancements
-🔬 Deep Learning models
-📱 Mobile app integration
-🌐 Real-time health data APIs
-🗣 Voice-based symptom input
-🌍 Multi-language support
-⚠️ Disclaimer
+### 4. Open the Frontend
+Just open `frontend/index.html` in your browser.
 
-This system is for educational and early awareness purposes only.
-It does not replace professional medical advice.
-
-👨‍💻 Team
-Your Name
-Teammates
-🏆 Hackathon Pitch Line
-
-“HealthOracle AI predicts diseases before they become dangerous — enabling proactive healthcare for everyone.”
-
-⭐ Contribution
-
-Feel free to fork, contribute, and improve the project!
-
+The **green status pill** in the header confirms the backend is connected.
 
 ---
 
-If you want next step:
-👉 I can generate **`requirements.txt` + dataset + ML model code (ready to run)**  
-👉 Or give you a **1-day hackathon execution plan (hour-by-hour)** 🚀
+## 🔌 API Reference
 
-## 📂 Project Structure  
+### `GET /`
+Health check — polled by the frontend every 10 seconds.
+
+```json
+{ "status": "ok", "models_ready": true, "version": "4.0.0" }
+```
+
+### `POST /predict`
+Submit patient data, receive ML predictions.
+
+**Request body** (all optional lab fields supported):
+```json
+{
+  "patientName": "John Doe",
+  "age": 52,
+  "gender": "Male",
+  "height": 175,
+  "weight": 85,
+  "systolic": 135,
+  "diastolic": 85,
+  "glucose": 108,
+  "hba1c": 5.9,
+  "cholesterol": 210,
+  "ldl": 135,
+  "hdl": 42,
+  "triglycerides": 160,
+  "sleepHours": 6.5,
+  "dietQuality": 6,
+  "stressLevel": 7,
+  "smoking": "Former",
+  "physicalActivity": "Medium",
+  "alcohol": "Moderate",
+  "familyDiabetes": "One",
+  "familyHeart": "None",
+  "symptoms": ["fatigue", "polyuria"],
+  "comorbidities": ["hypertension"]
+}
+```
+
+**Response:**
+```json
+{
+  "predictions": {
+    "diabetes":      { "risk_level": "Medium", "probability": 42, "confidence": 88 },
+    "heart_disease": { "risk_level": "Low",    "probability": 21, "confidence": 86 }
+  },
+  "factors": [
+    { "name": "Elevated HbA1c (5.9%)", "weight": 22, "positive": true },
+    { "name": "Family History of Diabetes (1 Parent)", "weight": 15, "positive": true }
+  ],
+  "recommendations": [
+    "Schedule a laboratory HbA1c review with a primary care physician.",
+    "Monitor cardiovascular markers..."
+  ],
+  "timestamp": "2026-06-10T12:00:00",
+  "source": "ml_model"
+}
+```
+
+### `GET /docs`
+Interactive Swagger UI for the API.
+
+### `GET /model-info`
+Returns training metadata (feature list, dataset sizes, positive rates).
+
+---
+
+## 🤖 ML Model Details
+
+### Architecture: Soft-Voting Ensemble
+| Model | Weight |
+|-------|--------|
+| Random Forest (300 trees, max_depth=12) | 3× |
+| Gradient Boosting (200 trees, lr=0.05) | 2× |
+| Logistic Regression (L2, calibrated) | 1× |
+
+### Training Data
+| Disease | Real Rows | Synthetic Rows | Total |
+|---------|-----------|----------------|-------|
+| Diabetes | 768 (PIMA) | 2,000 | 2,768 |
+| Heart Disease | 303 (Cleveland) | 2,000 | 2,303 |
+
+### Features
+**Diabetes (16 features):** Age, Gender, BMI, Fasting Glucose, HbA1c, Family History, Smoking, Physical Activity, Diet Quality, Stress Level, Sleep Hours, Hypertension, Obesity, Polyuria, Polydipsia, Numbness
+
+**Cardiovascular (18 features):** Age, Gender, BMI, Systolic BP, Diastolic BP, Cholesterol, LDL, HDL, Triglycerides, Family History, Smoking, Physical Activity, Alcohol, Stress Level, Sleep Hours, Hypertension, Hyperlipidemia, Chest Pain
+
+### Offline Fallback
+The frontend includes a complete **local rule-based inference engine** (`compileLocalClinicalInference`) that activates automatically if the backend is unreachable. The ML backend always takes priority when online.
+
+---
+
+## ⚠️ Clinical Disclaimer
+HealthOracle AI is a **screening tool for educational and early awareness purposes only**.  
+It is **NOT** a substitute for professional medical advice, diagnosis, or treatment.  
+Emergency symptoms (chest pain, severe breathlessness) → call emergency services immediately.
+
+---
+
+## 👨‍💻 Authors
+HealthOracle AI Project · 2026 · Hackathon Edition
