@@ -45,7 +45,7 @@ def setup_logging():
         
         # Log basic system details
         logging.getLogger("healthoracle.init").info(
-            "📝 Persistent logging initiated at %s", LOG_FILE_PATH
+            "Persistent logging initiated at %s", LOG_FILE_PATH
         )
     except Exception as e:
         # Fallback if log directory write fails
