@@ -73,3 +73,85 @@ class PredictionResponse(BaseModel):
     recommendations: List[str]
     timestamp: str
     source: str = "ml_model" # "ml_model" | "fallback"
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "predictions": {
+                    "diabetes": {"risk_level": "Medium", "probability": 42, "confidence": 88},
+                    "heart_disease": {"risk_level": "Low", "probability": 21, "confidence": 86}
+                },
+                "factors": [
+                    {"name": "Elevated HbA1c (5.9%)", "weight": 22, "positive": True},
+                    {"name": "Family History of Diabetes (1 Parent)", "weight": 15, "positive": True}
+                ],
+                "recommendations": [
+                    "Schedule a laboratory HbA1c review with a primary care physician.",
+                    "Monitor cardiovascular markers..."
+                ],
+                "timestamp": "2026-06-10T12:00:00",
+                "source": "ml_model"
+            }
+        }
+    }
+
+
+# ─────────────────────────────────────────────────
+# HISTORY MODELS
+# ─────────────────────────────────────────────────
+class AssessmentHistoryRecord(BaseModel):
+    id: int
+    timestamp: datetime
+    patient_name: str
+    mrn: str
+    age: int
+    gender: str
+    diabetes_risk_level: str
+    diabetes_probability: int
+    heart_risk_level: str
+    heart_probability: int
+
+    model_config = {
+        "from_attributes": True,
+        "json_schema_extra": {
+            "example": {
+                "id": 1,
+                "timestamp": "2026-06-10T13:30:00",
+                "patient_name": "John Doe",
+                "mrn": "MRN-12345",
+                "age": 45,
+                "gender": "Male",
+                "diabetes_risk_level": "Medium",
+                "diabetes_probability": 42,
+                "heart_risk_level": "Low",
+                "heart_probability": 18
+            }
+        }
+    }
+
+
+# ─────────────────────────────────────────────────
+# CHATBOT MODELS
+# ─────────────────────────────────────────────────
+class ChatMessage(BaseModel):
+    role: str = Field(..., pattern="^(user|assistant)$")
+    content: str = Field(..., min_length=1)
+
+
+class ChatRequest(BaseModel):
+    message: str = Field(..., min_length=1)
+    history: List[ChatMessage] = Field(default_factory=list)
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "message": "What does a high HbA1c of 7.2 mean?",
+                "history": [
+                    {"role": "user", "content": "Hello HealthOracle AI!"},
+                    {"role": "assistant", "content": "Hello! I am your pre-screening assistant. How can I help you understand your metrics today?"}
+                ]
+            }
+        }
+    }
+
+
