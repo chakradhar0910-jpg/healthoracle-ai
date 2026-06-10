@@ -3,96 +3,100 @@ HealthOracle AI — FastAPI Application
 ======================================
 Production-grade REST API for the HealthOracle Clinical Suite frontend.
 
-Endpoints:
-  GET  /          → Health check (used by frontend status pill)
-  POST /predict   → ML-powered risk prediction
-  GET  /model-info → Model metadata
-
-Run:
-  uvicorn backend.app:app --reload --host 127.0.0.1 --port 8000
+Now features persistent structured logging, SQLite database tracking,
+configurable CORS, and OCR file uploads for automatic data extraction.
 """
 
-import logging
 from datetime import datetime
-from typing import Any
+from typing import List
 
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, Request, HTTPException, Depends, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from sqlalchemy.orm import Session
 
-from backend.schemas import PatientPayload, PredictionResponse, ContributingFactor
+# Initialize structured logging first before other imports configure loggers
+from backend.logging_config import setup_logging
+setup_logging()
+
+import logging
+log = logging.getLogger("healthoracle.api")
+
+from backend.config import CORS_ORIGINS, CORS_ALLOW_CREDENTIALS, DEBUG
+from backend.schemas import (
+    PatientPayload, PredictionResponse, ContributingFactor,
+    AssessmentHistoryRecord, ChatRequest
+)
 from backend.model import (
     load_models, are_models_loaded,
     predict_diabetes, predict_heart_disease,
     risk_level_from_probability
 )
 from backend.utils import engineer_features, compute_contributing_factors, generate_recommendations
-
-# ── Logging ────────────────────────────────────────────────────────────────
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
-    datefmt="%H:%M:%S"
-)
-log = logging.getLogger("healthoracle")
+from backend.database import init_db, get_db, save_assessment, get_assessments
+from backend.ocr import extract_vitals_from_report
+from backend.gemini import generate_ai_recommendations, ai_chat_completion
 
 # ── FastAPI App ────────────────────────────────────────────────────────────
 app = FastAPI(
     title="HealthOracle AI Clinical API",
-    description="Hospital-grade disease risk prediction for Diabetes and Cardiovascular conditions.",
-    version="4.0.0",
+    description="Hospital-grade disease risk prediction and patient pre-screening manager.",
+    version="4.1.0",
     docs_url="/docs",
     redoc_url="/redoc"
 )
 
-# ── CORS — allow frontend (file:// or localhost) to call us ────────────────
+# ── CORS Middleware Configuration ──────────────────────────────────────────
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],           # Frontend runs from file:// or localhost
-    allow_credentials=True,
+    allow_origins=CORS_ORIGINS,
+    allow_credentials=CORS_ALLOW_CREDENTIALS,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 
-# ── Startup: Load ML models ────────────────────────────────────────────────
+# ── Startup Hooks ─────────────────────────────────────────────────────────
 @app.on_event("startup")
 async def startup_event():
     log.info("🏥 HealthOracle AI Server starting up...")
+    
+    # Initialize Database Tables
+    init_db()
+    
+    # Load ML models
     success = load_models()
     if success:
         log.info("✅ ML models loaded and ready.")
     else:
         log.warning(
-            "⚠️  ML models not found. Run 'python backend/train.py' to train them. "
+            "⚠️ ML models not found. Run 'python backend/train.py' to train them. "
             "The API will return 503 on /predict until models are available."
         )
 
 
-# ══════════════════════════════════════════════════════════════════════════
-# ENDPOINTS
-# ══════════════════════════════════════════════════════════════════════════
+# ── REST API Endpoints ─────────────────────────────────────────────────────
 
 @app.get("/", summary="Health Check")
 async def health_check():
     """
-    Status endpoint polled by the frontend every 10 seconds.
-    Returns 200 with model readiness info.
+    Status endpoint polled by the frontend.
+    Returns 200 with service information and model readiness.
     """
     return {
         "status": "ok",
         "service": "HealthOracle AI Clinical API",
-        "version": "4.0.0",
+        "version": "4.1.0",
         "models_ready": are_models_loaded(),
         "timestamp": datetime.utcnow().isoformat()
     }
 
 
 @app.post("/predict", summary="Patient Risk Prediction", response_model=None)
-async def predict(payload: PatientPayload):
+async def predict(payload: PatientPayload, db: Session = Depends(get_db)):
     """
-    Accepts full patient data from the HealthOracle frontend and returns
-    ML-powered predictions for Diabetes and Cardiovascular risk.
+    Accepts patient biometric data and returns risk probabilities,
+    contributing factors, clinical recommendations, and stores findings in the DB.
     """
     if not are_models_loaded():
         raise HTTPException(
@@ -109,7 +113,7 @@ async def predict(payload: PatientPayload):
         features = engineer_features(payload)
         resolved = features["_resolved"]
 
-        # 2. Predictions
+        # 2. ML Inference
         db_prob, db_conf = predict_diabetes(features["diabetes"])
         hd_prob, hd_conf = predict_heart_disease(features["heart"])
 
@@ -117,17 +121,28 @@ async def predict(payload: PatientPayload):
         hd_risk = risk_level_from_probability(hd_prob)
 
         log.info(
-            "Prediction | Patient: %s | Diabetes: %d%% (%s) | Heart: %d%% (%s)",
-            payload.patientName, db_prob, db_risk, hd_prob, hd_risk
+            "Prediction Request | Patient: %s (MRN: %s) | Diabetes: %d%% (%s) | Heart: %d%% (%s)",
+            payload.patientName, payload.mrn, db_prob, db_risk, hd_prob, hd_risk
         )
 
-        # 3. Contributing factors (top 5)
+        # 3. Save assessment results to history database
+        payload_dict = payload.model_dump() if hasattr(payload, "model_dump") else payload.dict()
+        save_assessment(db, payload_dict, db_prob, db_risk, hd_prob, hd_risk)
+
+        # 4. Generate explainable factors (top 5) and clinical suggestions
         raw_factors = compute_contributing_factors(payload, resolved, db_prob, hd_prob)
+        
+        # Use Gemini dynamic recommendations if available, else fallback to local rule-based system
+        payload_dict = payload.model_dump() if hasattr(payload, "model_dump") else payload.dict()
+        ai_recs = generate_ai_recommendations(payload_dict, db_prob, db_risk, hd_prob, hd_risk)
+        if ai_recs:
+            recommendations = ai_recs
+            log.info("✅ Gemini AI Recommendations generated successfully.")
+        else:
+            log.info("⚠️ Gemini recommendations unavailable, using local rules.")
+            recommendations = generate_recommendations(payload, resolved, db_risk, hd_risk)
 
-        # 4. Clinical recommendations
-        recommendations = generate_recommendations(payload, resolved, db_risk, hd_risk)
-
-        # 5. Build response
+        # 5. Formulate API Response
         response = {
             "predictions": {
                 "diabetes": {
@@ -150,16 +165,70 @@ async def predict(payload: PatientPayload):
         return JSONResponse(content=response)
 
     except Exception as e:
-        log.error("Prediction error: %s", str(e), exc_info=True)
+        log.error("❌ Prediction execution failed: %s", e, exc_info=True)
         raise HTTPException(
             status_code=500,
             detail={"error": "Prediction failed", "message": str(e)}
         )
 
 
+@app.get("/history", summary="Query Assessment History", response_model=List[AssessmentHistoryRecord])
+async def get_history(limit: int = 50, db: Session = Depends(get_db)):
+    """Retrieves list of past patient pre-screenings persisted in local database."""
+    assessments = get_assessments(db, limit=limit)
+    return assessments
+
+
+@app.post("/ocr-upload", summary="Parse Medical Report OCR")
+async def ocr_upload(file: UploadFile = File(...)):
+    """
+    Uploader for PDF/Image blood report files.
+    Applies OCR parsing and regex capture to identify and auto-fill clinical lab panels.
+    """
+    if not file.content_type.startswith("image/"):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid file format. Please upload an image file (PNG/JPG)."
+        )
+        
+    try:
+        file_bytes = await file.read()
+        vitals = extract_vitals_from_report(file_bytes, file.filename)
+        return {
+            "success": True,
+            "filename": file.filename,
+            "vitals": vitals
+        }
+    except Exception as e:
+        log.error("❌ Failed to process report file OCR: %s", e, exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail={"error": "OCR extraction failed", "message": str(e)}
+        )
+@app.post("/chat", summary="AI Health Chatbot Assistant")
+async def chat(request: ChatRequest):
+    """
+    Interactive pre-screening chatbot assistant.
+    Responds dynamically using historical conversation turns for context.
+    """
+    try:
+        history_list = [
+            turn.model_dump() if hasattr(turn, "model_dump") else turn.dict()
+            for turn in request.history
+        ]
+        response_text = ai_chat_completion(request.message, history_list)
+        return {"response": response_text}
+    except Exception as e:
+        log.error("❌ Chat completion failed: %s", e, exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail={"error": "Chatbot query failed", "message": str(e)}
+        )
+
+
 @app.get("/model-info", summary="Model Metadata")
 async def model_info():
-    """Returns metadata about the trained models."""
+    """Returns metadata details about the currently active trained models."""
     import json
     from pathlib import Path
 
@@ -178,10 +247,10 @@ async def model_info():
     }
 
 
-# ── Exception handler for clean JSON error responses ───────────────────────
+# ── Global Exception Handler ──────────────────────────────────────────────
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    log.error("Unhandled error on %s: %s", request.url.path, exc, exc_info=True)
+    log.error("💥 Unhandled exception on request path %s: %s", request.url.path, exc, exc_info=True)
     return JSONResponse(
         status_code=500,
         content={"error": "Internal server error", "detail": str(exc)}
