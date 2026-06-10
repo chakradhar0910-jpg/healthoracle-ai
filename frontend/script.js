@@ -256,7 +256,7 @@ document.addEventListener("DOMContentLoaded", () => {
             age: ageInput.value,
             dob: dobInput.value,
             gender: document.querySelector('input[name="gender"]:checked')?.value || "Male",
-            bp: bpInput.value,
+            bp: bpInput ? bpInput.value : "",
             height: heightInput.value,
             weight: weightInput.value,
             familyDiabetes: document.querySelector('input[name="family_diabetes"]:checked')?.value || "None",
@@ -298,7 +298,7 @@ document.addEventListener("DOMContentLoaded", () => {
             if (data.mrn) mrnInput.value = data.mrn;
             if (data.age) ageInput.value = data.age;
             if (data.dob) dobInput.value = data.dob;
-            if (data.bp) bpInput.value = data.bp;
+            if (data.bp && bpInput) bpInput.value = data.bp;
             if (data.height) heightInput.value = data.height;
             if (data.weight) weightInput.value = data.weight;
             
@@ -448,7 +448,27 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const age = parseInt(ageInput.value);
         const gender = document.querySelector('input[name="gender"]:checked').value;
-        const bp = bpInput.value;
+        
+        // Resolve BP category based on inputs or legacy dropdown if exists
+        let bp = "";
+        if (bpInput) {
+            bp = bpInput.value;
+        } else {
+            const systolicVal = systolicInput.value ? parseInt(systolicInput.value) : null;
+            const diastolicVal = diastolicInput.value ? parseInt(diastolicInput.value) : null;
+            if (systolicVal !== null && diastolicVal !== null) {
+                if (systolicVal >= 140 || diastolicVal >= 90) {
+                    bp = "High2";
+                } else if (systolicVal >= 130 || diastolicVal >= 80) {
+                    bp = "High1";
+                } else if (systolicVal >= 120 && diastolicVal < 80) {
+                    bp = "Elevated";
+                } else {
+                    bp = "Normal";
+                }
+            }
+        }
+
         const height = parseFloat(heightInput.value);
         const weight = parseFloat(weightInput.value);
         const familyDiabetes = document.querySelector('input[name="family_diabetes"]:checked').value;
