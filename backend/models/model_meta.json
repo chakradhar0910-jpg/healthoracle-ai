@@ -38,7 +38,7 @@
     "sym_chest_pain"
   ],
   "diabetes_train_rows": 2768,
-  "heart_train_rows": 2000,
+  "heart_train_rows": 2303,
   "diabetes_positive_rate": 0.3800578034682081,
-  "heart_positive_rate": 0.2865
+  "heart_positive_rate": 0.32045158488927483
 }
