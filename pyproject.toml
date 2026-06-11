@@ -42,3 +42,19 @@ python_version = "3.11"
 warn_return_any = true
 warn_unused_configs = true
 ignore_missing_imports = true
+
+[tool.vulture]
+paths = ["backend", "tests"]
+min_confidence = 80
+
+[tool.bandit]
+targets = ["backend"]
+exclude_dirs = ["tests"]
+
+[tool.pylint.main]
+ignore-paths = ["tests/"]
+
+[tool.pyupgrade]
+py311-plus = true
+keep-runtime-typing = true
+

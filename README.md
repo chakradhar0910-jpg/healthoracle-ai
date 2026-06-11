@@ -1,25 +1,70 @@
 # 🧠 HealthOracle AI — Clinical Pre-Screening Suite
 ### *Predict Before It Hurts* — v4.0 Hospital Grade
 
+[![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)](https://gitlab.com)
+[![Python Version](https://img.shields.io/badge/python-3.11-blue.svg)](https://python.org)
+[![License](https://img.shields.io/badge/license-AGPLv3-orange.svg)](file:///c:/Users/Ramakrishna/OneDrive/Desktop/H/healthoracle-ai/LICENSE)
+[![Code Style](https://img.shields.io/badge/code%20style-ruff-black.svg)](https://github.com/astral-sh/ruff)
+[![Type Checked](https://img.shields.io/badge/type%20checked-mypy-blue.svg)](https://github.com/python/mypy)
+[![Security Scan](https://img.shields.io/badge/security-gitleaks%20%7C%20bandit-red.svg)](https://github.com/gitleaks/gitleaks)
+
 ---
 
 ## 📌 Overview
-**HealthOracle AI** is an intelligent health risk prediction system that analyzes patient data (symptoms, lifestyle, biometrics, lab values) to **predict Diabetes and Cardiovascular disease risk** with ML-powered confidence scores and clinical recommendations.
+**HealthOracle AI** is an intelligent health risk prediction system that analyzes patient data (symptoms, lifestyle, biometrics, lab values) to **predict Diabetes and Cardiovascular disease risk** with ML-powered confidence scores and clinical recommendations. 
+
+The application utilizes a detached, modular machine learning library for data ingestion, synthetic augmentation, and model training, which can be run independently from the FastAPI API layer.
 
 ---
-##live demo 
-           https://healthoracle-ai-1.onrender.com
+
+## 🔗 Live Demo
+Visit the live deployment here: [healthoracle-ai-1.onrender.com](https://healthoracle-ai-1.onrender.com)
+
+---
+
+## 🏗 System Architecture
+
+```mermaid
+graph TD
+    subgraph Frontend [Client UI / HTML5 + CSS3 + JS]
+        UI[Prediction Dashboard]
+        Fallback[Local Inference Rule Engine]
+    end
+
+    subgraph Backend [FastAPI Server Gateway]
+        API[API Endpoints / backend/app.py]
+        Schema[Pydantic Validation / backend/schemas.py]
+    end
+
+    subgraph CoreML [Detached ML Library Layer]
+        Train[Pipeline / backend/train.py]
+        Utils[Feature Engineering / backend/utils.py]
+        Model[Inference Loader / backend/model.py]
+        Weights[(Model Weights / backend/models)]
+    end
+
+    UI -->|JSON Request| API
+    Fallback -.->|Local Inference Fallback| UI
+    API -->|Validate Schema| Schema
+    Schema -->|Structured Data| Model
+    Model -->|Load Trained Weights| Weights
+    Model -->|Run Inference| Utils
+    Utils -->|Generate Recommendations| Model
+    Model -->|JSON Response Payload| API
+    API -->|Predict Output| UI
+```
+
+---
 
 ## 🛠 Tech Stack
 
-| Layer | Technology |
-|-------|-----------|
-| Frontend | HTML5, Vanilla CSS, Vanilla JS (no framework) |
-| Backend | Python · FastAPI · Uvicorn |
-| ML Models | scikit-learn (Random Forest + GradientBoosting + LR Ensemble) |
-| Data | PIMA Indians Diabetes + UCI Cleveland Heart + Synthetic augmentation |
-| Feature Scaling | StandardScaler (saved with model) |
-| Class Balance | SMOTE (imbalanced-learn) |
+| Layer | Technology | Description |
+| :--- | :--- | :--- |
+| **Frontend** | HTML5, Vanilla CSS, Vanilla JS | Apple-inspired glassmorphism, responsive, zero external frameworks |
+| **Backend** | Python · FastAPI · Uvicorn | High-performance, async-ready REST API |
+| **ML Models** | scikit-learn | VotingClassifier Ensemble (Random Forest + Gradient Boosting + LR) |
+| **Class Balance**| SMOTE (imbalanced-learn) | Resampling synthetic health data for minority classes |
+| **Feature Scaling**| StandardScaler | Preserved and loaded alongside models in joblib format |
 
 ---
 
@@ -51,147 +96,140 @@ HealthOracle-AI/
 │   ├── styles.css         # Apple-inspired glassmorphism dark UI
 │   └── script.js          # Form logic + local inference fallback + API calls
 │
-├── requirements.txt
-└── README.md
+├── .gitlab-ci.yml         # Continuous Integration configuration
+├── .pre-commit-config.yaml # Pre-commit hook definitions
+├── pyproject.toml         # Python tool configurations (Ruff, Mypy, Vulture, Pylint, etc.)
+├── requirements.txt       # Production dependencies
+└── README.md              # Project onboarding & setup manual
 ```
 
 ---
 
-## ⚡ Quick Start
+## ⚡ Developer Onboarding & Quick Start
 
-### Prerequisites
-- Python 3.9+
-- pip
+### 1. Prerequisites
+- **Python 3.11+** installed on your system.
+- **Git** version control system.
 
-### 1. Install Dependencies
+### 2. Setup Virtual Environment
+Clone the repository and navigate to the root directory. Then create and activate a Python virtual environment:
+
 ```bash
-pip install -r requirements.txt
+# Create virtual environment
+python -m venv .venv
+
+# Activate on Windows (cmd)
+.venv\Scripts\activate.bat
+
+# Activate on Windows (PowerShell)
+.venv\Scripts\Activate.ps1
+
+# Activate on macOS/Linux
+source .venv/bin/activate
 ```
 
-### 2. Train the ML Models
+### 3. Install Dependencies
+Install all core application dependencies and test utilities:
+
+```bash
+pip install --upgrade pip
+pip install -r requirements.txt
+pip install pytest pytest-cov httpx ruff mypy types-requests types-urllib3 vulture bandit pylint flake8 semgrep
+```
+
+### 4. Initialize Pre-Commit Hooks
+Ensure that your changes automatically conform to quality standards before making commits:
+
+```bash
+pre-commit install
+```
+
+### 5. Train the Machine Learning Models
+Execute the decoupled training script to pull datasets, augment them using synthetic generators, and fit models:
+
 ```bash
 python backend/train.py
 ```
-This will:
-- Download the real **PIMA Indians Diabetes** dataset (~768 rows)
-- Download the real **UCI Heart Disease** dataset (~303 rows)  
-- Generate **2,000 synthetic rows** per disease with realistic medical distributions
-- Train a **VotingClassifier ensemble** (Random Forest + Gradient Boosting + Logistic Regression)
-- Print accuracy, ROC-AUC, and 5-fold cross-validation scores
-- Save models to `backend/models/`
+This training pipeline will:
+- Ingest real **PIMA Indians Diabetes** and **UCI Heart Disease** datasets.
+- Generate **2,000 synthetic patient rows** per model mapping real-world clinical correlations.
+- Train the **Soft-Voting Ensemble Classifier** (Random Forest, Gradient Boosting, calibrated Logistic Regression).
+- Export serialization files and scaler metadata directly to `backend/models/`.
 
-### 3. Start the API Server
+### 6. Run the REST API Gateway
+Start the FastAPI server:
+
 ```bash
 uvicorn backend.app:app --reload --host 127.0.0.1 --port 8000
 ```
+Visit the Swagger UI API Documentation at [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs).
 
-### 4. Open the Frontend
-Just open `frontend/index.html` in your browser.
-
-The **green status pill** in the header confirms the backend is connected.
-
----
-
-## 🔌 API Reference
-
-### `GET /`
-Health check — polled by the frontend every 10 seconds.
-
-```json
-{ "status": "ok", "models_ready": true, "version": "4.0.0" }
-```
-
-### `POST /predict`
-Submit patient data, receive ML predictions.
-
-**Request body** (all optional lab fields supported):
-```json
-{
-  "patientName": "John Doe",
-  "age": 52,
-  "gender": "Male",
-  "height": 175,
-  "weight": 85,
-  "systolic": 135,
-  "diastolic": 85,
-  "glucose": 108,
-  "hba1c": 5.9,
-  "cholesterol": 210,
-  "ldl": 135,
-  "hdl": 42,
-  "triglycerides": 160,
-  "sleepHours": 6.5,
-  "dietQuality": 6,
-  "stressLevel": 7,
-  "smoking": "Former",
-  "physicalActivity": "Medium",
-  "alcohol": "Moderate",
-  "familyDiabetes": "One",
-  "familyHeart": "None",
-  "symptoms": ["fatigue", "polyuria"],
-  "comorbidities": ["hypertension"]
-}
-```
-
-**Response:**
-```json
-{
-  "predictions": {
-    "diabetes":      { "risk_level": "Medium", "probability": 42, "confidence": 88 },
-    "heart_disease": { "risk_level": "Low",    "probability": 21, "confidence": 86 }
-  },
-  "factors": [
-    { "name": "Elevated HbA1c (5.9%)", "weight": 22, "positive": true },
-    { "name": "Family History of Diabetes (1 Parent)", "weight": 15, "positive": true }
-  ],
-  "recommendations": [
-    "Schedule a laboratory HbA1c review with a primary care physician.",
-    "Monitor cardiovascular markers..."
-  ],
-  "timestamp": "2026-06-10T12:00:00",
-  "source": "ml_model"
-}
-```
-
-### `GET /docs`
-Interactive Swagger UI for the API.
-
-### `GET /model-info`
-Returns training metadata (feature list, dataset sizes, positive rates).
+### 7. Launch Frontend Dashboard
+Open `frontend/index.html` in your browser. The connection pill in the header will turn green indicating a successful connection to the backend.
 
 ---
 
-## 🤖 ML Model Details
+## 🧪 Quality Assurance & Testing
 
-### Architecture: Soft-Voting Ensemble
-| Model | Weight |
-|-------|--------|
-| Random Forest (300 trees, max_depth=12) | 3× |
-| Gradient Boosting (200 trees, lr=0.05) | 2× |
-| Logistic Regression (L2, calibrated) | 1× |
+### Running Tests
+To run unit and integration tests with coverage details:
+```bash
+pytest --cov=backend --cov-report=term-missing tests/
+```
 
-### Training Data
-| Disease | Real Rows | Synthetic Rows | Total |
-|---------|-----------|----------------|-------|
-| Diabetes | 768 (PIMA) | 2,000 | 2,768 |
-| Heart Disease | 303 (Cleveland) | 2,000 | 2,303 |
+### Static Analysis & Linters
+Run individual checks locally using the custom configuration files in the root:
 
-### Features
-**Diabetes (16 features):** Age, Gender, BMI, Fasting Glucose, HbA1c, Family History, Smoking, Physical Activity, Diet Quality, Stress Level, Sleep Hours, Hypertension, Obesity, Polyuria, Polydipsia, Numbness
+*   **Ruff (Linter & Formatter)**:
+    ```bash
+    ruff check backend/ tests/
+    ruff format --check backend/ tests/
+    ```
+*   **Mypy (Type Safety)**:
+    ```bash
+    mypy backend/ tests/
+    ```
+*   **Vulture (Dead Code Detection)**:
+    ```bash
+    vulture backend/
+    ```
+*   **Bandit (Security Linting)**:
+    ```bash
+    bandit -r backend/ -c bandit.yaml
+    ```
+*   **Pylint (Code Quality)**:
+    ```bash
+    pylint backend/
+    ```
+*   **Flake8 (Style Violations)**:
+    ```bash
+    flake8 backend/
+    ```
+*   **Semgrep (Static SAST Scanning)**:
+    ```bash
+    semgrep --config=.semgrep.yaml backend/
+    ```
 
-**Cardiovascular (18 features):** Age, Gender, BMI, Systolic BP, Diastolic BP, Cholesterol, LDL, HDL, Triglycerides, Family History, Smoking, Physical Activity, Alcohol, Stress Level, Sleep Hours, Hypertension, Hyperlipidemia, Chest Pain
+---
 
-### Offline Fallback
-The frontend includes a complete **local rule-based inference engine** (`compileLocalClinicalInference`) that activates automatically if the backend is unreachable. The ML backend always takes priority when online.
+## 🤖 CI/CD Pipeline Stages
+Our GitLab CI configuration (`.gitlab-ci.yml`) enforces the following sequence:
+
+1.  **test**: Runs all test suites via `pytest`.
+2.  **lint**: Runs Ruff code quality checks.
+3.  **format**: Verifies Ruff-compliant code formatting.
+4.  **type_check**: Evaluates strict static type definitions via `mypy`.
+5.  **coverage**: Checks code test coverage thresholds.
 
 ---
 
 ## ⚠️ Clinical Disclaimer
-HealthOracle AI is a **screening tool for educational and early awareness purposes only**.  
+HealthOracle AI is a **clinical pre-screening tool for educational and early awareness purposes only**.  
 It is **NOT** a substitute for professional medical advice, diagnosis, or treatment.  
-Emergency symptoms (chest pain, severe breathlessness) → call emergency services immediately.
+If you are experiencing emergency symptoms (e.g., severe chest pain or breathlessness), please contact emergency services immediately.
 
 ---
 
-## 👨‍💻 Authors
-HealthOracle AI Project · 2026 · Hackathon Edition
+## 👨‍💻 Authors & Governance
+HealthOracle AI Project · 2026 · Clinical Software Compliance Edition.
+All modifications to the clinical Pydantic models or schemas must be documented.

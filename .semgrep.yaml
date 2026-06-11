@@ -1,0 +1,12 @@
+# Semgrep Configuration File
+rules:
+  - id: no-eval
+    pattern: eval(...)
+    message: "Do not use eval() to avoid code injection vulnerabilities."
+    languages: [python]
+    severity: WARNING
+  - id: no-exec
+    pattern: exec(...)
+    message: "Do not use exec() to avoid code injection vulnerabilities."
+    languages: [python]
+    severity: WARNING
