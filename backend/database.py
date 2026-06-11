@@ -23,12 +23,13 @@ connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite")
 
 engine = create_engine(DATABASE_URL, connect_args=connect_args)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-Base = declarative_base()
+Base: Any = declarative_base()
 
 
 # ── Table Schema Declaration ──────────────────────────────────────────────
 class PatientRiskAssessment(Base):
     """Stores a history of risk predictions for analysis and progress tracking."""
+
     __tablename__ = "patient_risk_assessments"
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
@@ -41,6 +42,17 @@ class PatientRiskAssessment(Base):
     diabetes_probability = Column(Integer, nullable=False)
     heart_risk_level = Column(String(50), nullable=False)
     heart_probability = Column(Integer, nullable=False)
+
+    # Expanded Diseases Columns
+    kidney_risk_level = Column(String(50), default="Low", nullable=True)
+    kidney_probability = Column(Integer, default=0, nullable=True)
+    liver_risk_level = Column(String(50), default="Low", nullable=True)
+    liver_probability = Column(Integer, default=0, nullable=True)
+    stroke_risk_level = Column(String(50), default="Low", nullable=True)
+    stroke_probability = Column(Integer, default=0, nullable=True)
+    cancer_risk_level = Column(String(50), default="Low", nullable=True)
+    cancer_probability = Column(Integer, default=0, nullable=True)
+
     payload_json = Column(Text, nullable=False)  # Raw submitted JSON for auditing
 
 
@@ -71,8 +83,16 @@ def save_assessment(
     db_prob: int,
     db_risk: str,
     hd_prob: int,
-    hd_risk: str
-) -> PatientRiskAssessment:
+    hd_risk: str,
+    kd_prob: int = 0,
+    kd_risk: str = "Low",
+    ld_prob: int = 0,
+    ld_risk: str = "Low",
+    st_prob: int = 0,
+    st_risk: str = "Low",
+    ca_prob: int = 0,
+    ca_risk: str = "Low",
+) -> PatientRiskAssessment | None:
     """Persists a prediction result to the history database."""
     try:
         assessment = PatientRiskAssessment(
@@ -84,7 +104,15 @@ def save_assessment(
             diabetes_probability=db_prob,
             heart_risk_level=hd_risk,
             heart_probability=hd_prob,
-            payload_json=json.dumps(payload_dict)
+            kidney_risk_level=kd_risk,
+            kidney_probability=kd_prob,
+            liver_risk_level=ld_risk,
+            liver_probability=ld_prob,
+            stroke_risk_level=st_risk,
+            stroke_probability=st_prob,
+            cancer_risk_level=ca_risk,
+            cancer_probability=ca_prob,
+            payload_json=json.dumps(payload_dict),
         )
         db.add(assessment)
         db.commit()
@@ -94,7 +122,6 @@ def save_assessment(
     except Exception as e:
         db.rollback()
         log.error("❌ Failed to save assessment to database: %s", e, exc_info=True)
-        # We don't raise here to make database storage failure non-blocking for predictions
         return None
 
 
