@@ -1673,3 +1673,588 @@ input[type="range"]::-webkit-slider-thumb:hover {
 .mt-4 { margin-top: 1rem; }
 .mb-4 { margin-bottom: 1.25rem; }
 .mb-3 { margin-bottom: 0.75rem; }
+
+/* ── 15 Feature Suite UI Custom Styles ────────────────────────────────────── */
+
+/* Emergency Flashing Banner */
+.emergency-critical-banner {
+    background: linear-gradient(90deg, #ff3b30, #ff453a);
+    color: white;
+    padding: 0.85rem 1.5rem;
+    border-radius: 12px;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    font-weight: 700;
+    box-shadow: 0 4px 15px rgba(255, 59, 48, 0.35);
+    animation: criticalPulse 1.8s infinite;
+}
+
+@keyframes criticalPulse {
+    0%, 100% { box-shadow: 0 4px 15px rgba(255, 59, 48, 0.35); filter: brightness(1); }
+    50% { box-shadow: 0 4px 25px rgba(255, 59, 48, 0.65); filter: brightness(1.1); }
+}
+
+.emergency-critical-banner i {
+    animation: alarmSpin 1.2s infinite ease-in-out;
+}
+
+@keyframes alarmSpin {
+    0%, 100% { transform: rotate(0deg); }
+    50% { transform: rotate(15deg); }
+}
+
+/* Header Languages Dropdown & Action Alignment */
+.header-select {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--border-glass);
+    border-radius: 8px;
+    color: var(--text-primary);
+    padding: 0.4rem 0.8rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    outline: none;
+    transition: var(--transition-apple);
+}
+
+.header-select:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.header-select option {
+    background: #1c1c1e;
+    color: white;
+}
+
+/* NLP & Voice input tools */
+.nlp-textarea-container {
+    position: relative;
+    width: 100%;
+}
+
+.nlp-textarea {
+    width: 100%;
+    min-height: 80px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-glass);
+    border-radius: 10px;
+    color: white;
+    padding: 0.85rem;
+    font-family: inherit;
+    font-size: 0.875rem;
+    resize: none;
+    outline: none;
+}
+
+.nlp-controls-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 0.5rem;
+    gap: 0.5rem;
+}
+
+.btn-nlp-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.45rem 0.85rem;
+    border-radius: 8px;
+    font-size: 0.775rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid var(--border-glass);
+    background: rgba(255, 255, 255, 0.05);
+    color: white;
+    transition: var(--transition-apple);
+}
+
+.btn-nlp-action:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.btn-nlp-primary {
+    background: white;
+    color: black;
+    border: none;
+}
+
+.btn-nlp-primary:hover {
+    background: #e5e5ea;
+}
+
+.mic-active {
+    background: rgba(255, 59, 48, 0.2) !important;
+    border-color: rgba(255, 59, 48, 0.4) !important;
+    color: var(--system-red) !important;
+    animation: micBlinking 1.2s infinite;
+}
+
+@keyframes micBlinking {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+/* 6 Card Risk Gauges Layout */
+@media (min-width: 900px) {
+    .results-layout-cards {
+        grid-template-columns: repeat(3, 1fr) !important;
+    }
+}
+
+.genetic-predisposition-badge {
+    display: inline-flex;
+    align-items: center;
+    font-size: 0.65rem;
+    font-weight: 800;
+    color: var(--system-purple);
+    background: rgba(175, 82, 222, 0.12);
+    border: 1px solid rgba(175, 82, 222, 0.22);
+    padding: 0.15rem 0.45rem;
+    border-radius: 4px;
+    margin-top: 0.25rem;
+    text-transform: uppercase;
+}
+
+/* What-If Sandbox Sliders Panel */
+.what-if-sandbox-card {
+    padding: 1.5rem 1.75rem;
+}
+
+.what-if-sliders-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+@media (min-width: 600px) {
+    .what-if-sliders-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+.sandbox-slider-item {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    padding: 0.85rem;
+    border-radius: 10px;
+}
+
+.sandbox-slider-meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-bottom: 0.4rem;
+}
+
+.sandbox-slider-meta span:last-child {
+    color: var(--system-blue);
+}
+
+.sandbox-output-summary {
+    background: rgba(0, 122, 255, 0.05);
+    border: 1px solid rgba(0, 122, 255, 0.12);
+    border-radius: 10px;
+    padding: 1rem;
+    margin-top: 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    font-size: 0.85rem;
+    line-height: 1.4;
+}
+
+.sandbox-output-summary i {
+    color: var(--system-blue);
+    flex-shrink: 0;
+}
+
+/* Wearable Telemetry Log Panel */
+.telemetry-logger-card {
+    padding: 1.5rem 1.75rem;
+}
+
+.telemetry-log-console {
+    background: #000000;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    font-family: monospace;
+    font-size: 0.75rem;
+    color: var(--system-green);
+    padding: 0.85rem;
+    height: 110px;
+    overflow-y: auto;
+    margin-top: 1rem;
+    box-shadow: inset 0 0 10px rgba(0, 255, 0, 0.05);
+}
+
+.telemetry-log-line {
+    margin-bottom: 0.35rem;
+    display: flex;
+    gap: 0.5rem;
+}
+
+.telemetry-log-line span:first-child {
+    color: #888;
+}
+
+/* Longitudinal History Timeline */
+.timeline-card {
+    padding: 1.5rem 1.75rem;
+}
+
+.timeline-points-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: relative;
+    padding: 1rem 0;
+    margin-top: 1.25rem;
+}
+
+.timeline-progress-bar {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: rgba(255, 255, 255, 0.06);
+    z-index: 1;
+}
+
+.timeline-point {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    z-index: 2;
+}
+
+.timeline-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--system-blue);
+    border: 3px solid #1c1c1e;
+    box-shadow: 0 0 8px var(--system-blue);
+    transition: transform 0.3s;
+}
+
+.timeline-dot.high-risk {
+    background: var(--system-red);
+    box-shadow: 0 0 8px var(--system-red);
+}
+
+.timeline-dot.med-risk {
+    background: var(--system-orange);
+    box-shadow: 0 0 8px var(--system-orange);
+}
+
+.timeline-point:hover .timeline-dot {
+    transform: scale(1.35);
+}
+
+.timeline-date {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    margin-top: 0.5rem;
+    font-weight: 600;
+}
+
+.timeline-risk-val {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-top: 0.15rem;
+}
+
+/* Calibration Curve & Diagram */
+.calibration-diagram-box {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    height: 120px;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.08);
+    border-left: 2px solid rgba(255, 255, 255, 0.08);
+    padding: 0 0.5rem;
+    margin-top: 1rem;
+    position: relative;
+}
+
+.calibration-graph-line {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 100%;
+    border-top: 1px dashed rgba(0, 122, 255, 0.22);
+    transform: rotate(-35deg);
+    transform-origin: bottom left;
+    pointer-events: none;
+}
+
+.calibration-bar-column {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 16%;
+    gap: 0.4rem;
+}
+
+.calibration-bar-fill {
+    width: 100%;
+    background: linear-gradient(180deg, var(--system-blue), rgba(0, 122, 255, 0.1));
+    border-radius: 4px 4px 0 0;
+    height: 0;
+    transition: height 1s;
+}
+
+.calibration-bar-label {
+    font-size: 0.65rem;
+    color: var(--text-secondary);
+    font-weight: 700;
+}
+
+.calibration-bar-accuracy {
+    background: var(--system-teal) !important;
+}
+
+/* Doctor Admin Panel View */
+.triage-table-card {
+    padding: 1.5rem 1.75rem;
+}
+
+.triage-table-row {
+    transition: background 0.25s;
+    cursor: pointer;
+}
+
+.triage-table-row:hover {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.triage-risk-pill {
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+/* AI Health Coach Goals */
+.coach-card {
+    padding: 1.5rem 1.75rem;
+}
+
+.coach-goals-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-top: 1rem;
+}
+
+.coach-goal-item {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    background: rgba(255, 255, 255, 0.015);
+    border: 1px solid rgba(255, 255, 255, 0.03);
+    padding: 0.65rem 1rem;
+    border-radius: 8px;
+    font-size: 0.85rem;
+}
+
+.coach-goal-item i {
+    color: var(--system-green);
+    flex-shrink: 0;
+}
+
+.coach-goal-title {
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.coach-goal-reason {
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    margin-left: 0.25rem;
+}
+
+/* View Portal Toggles */
+.portal-toggles-container {
+    display: flex;
+    justify-content: center;
+    margin: 1.5rem 0;
+}
+
+.btn-portal-switch {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 1.2rem;
+    border-radius: 10px;
+    border: 1px solid var(--border-glass);
+    color: var(--text-primary);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    background: rgba(255, 255, 255, 0.03);
+    transition: var(--transition-apple);
+}
+
+.btn-portal-switch.active {
+    background: white;
+    color: black;
+    border: none;
+    box-shadow: 0 4px 15px rgba(255, 255, 255, 0.15);
+}
+
+/* File Upload drag-drop area */
+.ocr-dropzone-box {
+    border: 2px dashed rgba(255, 255, 255, 0.12);
+    border-radius: 12px;
+    padding: 1.5rem;
+    text-align: center;
+    background: rgba(255, 255, 255, 0.01);
+    transition: border-color 0.3s, background 0.3s;
+    cursor: pointer;
+}
+
+.ocr-dropzone-box:hover {
+    border-color: var(--system-blue);
+    background: rgba(0, 122, 255, 0.02);
+}
+
+.ocr-dropzone-box i {
+    font-size: 1.75rem;
+    color: var(--system-blue);
+    margin-bottom: 0.5rem;
+}
+
+.ocr-dropzone-box h5 {
+    font-size: 0.85rem;
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+}
+
+.ocr-dropzone-box p {
+    font-size: 0.725rem;
+    color: var(--text-secondary);
+}
+
+/* AI Settings Cog and Modal Styles */
+.header-icon-btn {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 50%;
+    color: var(--text-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-left: 8px;
+}
+
+.header-icon-btn:hover {
+    background: rgba(255, 255, 255, 0.18);
+    border-color: rgba(255, 255, 255, 0.25);
+    transform: scale(1.05);
+}
+
+.header-icon-btn i {
+    width: 18px;
+    height: 18px;
+}
+
+.apple-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    transition: opacity 0.3s ease;
+}
+
+.apple-modal-overlay.hidden {
+    opacity: 0;
+    pointer-events: none;
+    display: none !important;
+}
+
+.apple-modal-content {
+    width: 480px;
+    max-width: 90%;
+    border-radius: 18px;
+    padding: 1.75rem;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+    animation: modal-slide-in 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+@keyframes modal-slide-in {
+    from {
+        transform: translateY(20px) scale(0.96);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+    }
+}
+
+.modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    padding-bottom: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.modal-header h3 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    font-size: 1.15rem;
+    font-family: var(--font-header);
+    font-weight: 700;
+}
+
+.btn-close-modal {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.btn-close-modal:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+}
+
+.btn-close-modal i {
+    width: 20px;
+    height: 20px;
+}
+

@@ -1,44 +1,16 @@
 {
-  "diabetes_features": [
-    "age",
-    "gender",
-    "bmi",
-    "glucose",
-    "hba1c",
-    "family_diabetes",
-    "smoking",
-    "physical_activity",
-    "diet_quality",
-    "stress_level",
-    "sleep_hours",
-    "hypertension",
-    "obesity",
-    "sym_polyuria",
-    "sym_polydipsia",
-    "sym_numbness"
-  ],
-  "heart_features": [
-    "age",
-    "gender",
-    "bmi",
-    "systolic",
-    "diastolic",
-    "cholesterol",
-    "ldl",
-    "hdl",
-    "triglycerides",
-    "family_heart",
-    "smoking",
-    "physical_activity",
-    "alcohol",
-    "stress_level",
-    "sleep_hours",
-    "hypertension",
-    "hyperlipidemia",
-    "sym_chest_pain"
-  ],
-  "diabetes_train_rows": 2768,
-  "heart_train_rows": 2303,
-  "diabetes_positive_rate": 0.3800578034682081,
-  "heart_positive_rate": 0.32045158488927483
+    "version": "4.2.0-auto",
+    "last_trained": "2026-06-11T08:13:57.367121",
+    "accuracy": 0.856,
+    "f1_score": 0.848,
+    "samples": 2500,
+    "active_features": [
+        "age",
+        "gender",
+        "bmi",
+        "systolic",
+        "diastolic",
+        "glucose",
+        "hba1c"
+    ]
 }

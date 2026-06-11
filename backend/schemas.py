@@ -19,8 +19,8 @@ class PatientPayload(BaseModel):
     # Core biometrics
     age: int = Field(..., ge=1, le=115)
     gender: str = Field(..., pattern="^(Male|Female)$")
-    height: float = Field(..., ge=80, le=250)      # cm
-    weight: float = Field(..., ge=10, le=300)      # kg
+    height: float = Field(..., ge=80, le=250)  # cm
+    weight: float = Field(..., ge=10, le=300)  # kg
 
     # Legacy categorical blood pressure (frontend fallback)
     bp: str | None = None  # "Normal", "Elevated", "High1", "High2"
@@ -28,12 +28,12 @@ class PatientPayload(BaseModel):
     # Lab panel — all optional
     systolic: float | None = Field(None, ge=70, le=250)
     diastolic: float | None = Field(None, ge=40, le=150)
-    glucose: float | None = Field(None, ge=50, le=500)      # mg/dL fasting
-    hba1c: float | None = Field(None, ge=3.0, le=18.0)      # %
+    glucose: float | None = Field(None, ge=50, le=500)  # mg/dL fasting
+    hba1c: float | None = Field(None, ge=3.0, le=18.0)  # %
     cholesterol: float | None = Field(None, ge=80, le=500)  # mg/dL
-    ldl: float | None = Field(None, ge=30, le=350)          # mg/dL
-    hdl: float | None = Field(None, ge=15, le=150)          # mg/dL
-    triglycerides: float | None = Field(None, ge=30, le=600) # mg/dL
+    ldl: float | None = Field(None, ge=30, le=350)  # mg/dL
+    hdl: float | None = Field(None, ge=15, le=150)  # mg/dL
+    triglycerides: float | None = Field(None, ge=30, le=600)  # mg/dL
 
     # Lifestyle
     sleepHours: float = Field(7.0, ge=4.0, le=10.0)
@@ -56,41 +56,45 @@ class PatientPayload(BaseModel):
 # RESPONSE MODELS
 # ─────────────────────────────────────────────────
 class RiskResult(BaseModel):
-    risk_level: str          # "Low" | "Medium" | "High"
-    probability: int         # 0-100 (display as %)
-    confidence: int          # 0-100 (model confidence %)
+    risk_level: str  # "Low" | "Medium" | "High"
+    probability: int  # 0-100 (display as %)
+    confidence: int  # 0-100 (model confidence %)
 
 
 class ContributingFactor(BaseModel):
     name: str
-    weight: int              # numeric weight for bar chart
-    positive: bool           # True = increases risk, False = decreases
+    weight: int  # numeric weight for bar chart
+    positive: bool  # True = increases risk, False = decreases
 
 
 class PredictionResponse(BaseModel):
-    predictions: dict        # { diabetes: RiskResult, heart_disease: RiskResult }
+    predictions: dict  # { diabetes: RiskResult, heart_disease: RiskResult }
     factors: list[ContributingFactor]
     recommendations: list[str]
     timestamp: str
-    source: str = "ml_model" # "ml_model" | "fallback"
+    source: str = "ml_model"  # "ml_model" | "fallback"
 
     model_config = {
         "json_schema_extra": {
             "example": {
                 "predictions": {
                     "diabetes": {"risk_level": "Medium", "probability": 42, "confidence": 88},
-                    "heart_disease": {"risk_level": "Low", "probability": 21, "confidence": 86}
+                    "heart_disease": {"risk_level": "Low", "probability": 21, "confidence": 86},
                 },
                 "factors": [
                     {"name": "Elevated HbA1c (5.9%)", "weight": 22, "positive": True},
-                    {"name": "Family History of Diabetes (1 Parent)", "weight": 15, "positive": True}
+                    {
+                        "name": "Family History of Diabetes (1 Parent)",
+                        "weight": 15,
+                        "positive": True,
+                    },
                 ],
                 "recommendations": [
                     "Schedule a laboratory HbA1c review with a primary care physician.",
-                    "Monitor cardiovascular markers..."
+                    "Monitor cardiovascular markers...",
                 ],
                 "timestamp": "2026-06-10T12:00:00",
-                "source": "ml_model"
+                "source": "ml_model",
             }
         }
     }
@@ -110,6 +114,14 @@ class AssessmentHistoryRecord(BaseModel):
     diabetes_probability: int
     heart_risk_level: str
     heart_probability: int
+    kidney_risk_level: str | None = "Low"
+    kidney_probability: int | None = 0
+    liver_risk_level: str | None = "Low"
+    liver_probability: int | None = 0
+    stroke_risk_level: str | None = "Low"
+    stroke_probability: int | None = 0
+    cancer_risk_level: str | None = "Low"
+    cancer_probability: int | None = 0
 
     model_config = {
         "from_attributes": True,
@@ -124,9 +136,9 @@ class AssessmentHistoryRecord(BaseModel):
                 "diabetes_risk_level": "Medium",
                 "diabetes_probability": 42,
                 "heart_risk_level": "Low",
-                "heart_probability": 18
+                "heart_probability": 18,
             }
-        }
+        },
     }
 
 
@@ -148,10 +160,11 @@ class ChatRequest(BaseModel):
                 "message": "What does a high HbA1c of 7.2 mean?",
                 "history": [
                     {"role": "user", "content": "Hello HealthOracle AI!"},
-                    {"role": "assistant", "content": "Hello! I am your pre-screening assistant. How can I help you understand your metrics today?"}
-                ]
+                    {
+                        "role": "assistant",
+                        "content": "Hello! I am your pre-screening assistant. How can I help you understand your metrics today?",
+                    },
+                ],
             }
         }
     }
-
-
