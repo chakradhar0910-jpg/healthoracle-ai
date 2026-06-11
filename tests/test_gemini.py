@@ -1,3 +1,6 @@
+import os
+os.environ["HEALTHORACLE_GEMINI_API_KEY"] = "mock-api-key"
+
 import pytest
 from unittest.mock import patch, MagicMock
 
