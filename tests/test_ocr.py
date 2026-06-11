@@ -1,5 +1,9 @@
-import pytest
-from backend.ocr import parse_vitals_from_text, generate_mock_report_data, extract_vitals_from_report
+from backend.ocr import (
+    extract_vitals_from_report,
+    generate_mock_report_data,
+    parse_vitals_from_text,
+)
+
 
 def test_parse_vitals_from_text():
     """Verify that regex parser identifies clinical markers in text block reports."""

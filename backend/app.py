@@ -8,34 +8,34 @@ configurable CORS, and OCR file uploads for automatic data extraction.
 """
 
 from datetime import datetime
-from typing import List
 
-from fastapi import FastAPI, Request, HTTPException, Depends, UploadFile, File
+from fastapi import Depends, FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 # Initialize structured logging first before other imports configure loggers
 from backend.logging_config import setup_logging
+
 setup_logging()
 
 import logging
+
 log = logging.getLogger("healthoracle.api")
 
-from backend.config import CORS_ORIGINS, CORS_ALLOW_CREDENTIALS, DEBUG
-from backend.schemas import (
-    PatientPayload, PredictionResponse, ContributingFactor,
-    AssessmentHistoryRecord, ChatRequest
-)
+from backend.config import CORS_ALLOW_CREDENTIALS, CORS_ORIGINS
+from backend.database import get_assessments, get_db, init_db, save_assessment
+from backend.gemini import ai_chat_completion, generate_ai_recommendations
 from backend.model import (
-    load_models, are_models_loaded,
-    predict_diabetes, predict_heart_disease,
-    risk_level_from_probability
+    are_models_loaded,
+    load_models,
+    predict_diabetes,
+    predict_heart_disease,
+    risk_level_from_probability,
 )
-from backend.utils import engineer_features, compute_contributing_factors, generate_recommendations
-from backend.database import init_db, get_db, save_assessment, get_assessments
 from backend.ocr import extract_vitals_from_report
-from backend.gemini import generate_ai_recommendations, ai_chat_completion
+from backend.schemas import AssessmentHistoryRecord, ChatRequest, PatientPayload
+from backend.utils import compute_contributing_factors, engineer_features, generate_recommendations
 
 # ── FastAPI App ────────────────────────────────────────────────────────────
 app = FastAPI(
@@ -178,7 +178,7 @@ async def predict(payload: PatientPayload, db: Session = Depends(get_db)):
         )
 
 
-@app.get("/history", summary="Query Assessment History", response_model=List[AssessmentHistoryRecord])
+@app.get("/history", summary="Query Assessment History", response_model=list[AssessmentHistoryRecord])
 async def get_history(limit: int = 50, db: Session = Depends(get_db)):
     """Retrieves list of past patient pre-screenings persisted in local database."""
     assessments = get_assessments(db, limit=limit)

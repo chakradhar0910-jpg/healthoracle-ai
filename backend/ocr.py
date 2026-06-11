@@ -5,10 +5,10 @@ Extracts key lab vitals (glucose, hba1c, cholesterol, bp) from uploaded medical 
 Utilizes pytesseract if available, falling back to regex extraction or a realistic mock generator.
 """
 
-import re
 import io
 import logging
-from typing import Dict, Any, Optional
+import re
+from typing import Any
 
 log = logging.getLogger("healthoracle.ocr")
 
@@ -32,7 +32,7 @@ if HAS_TESSERACT and TESSERACT_CMD:
     pytesseract.pytesseract.tesseract_cmd = TESSERACT_CMD
 
 
-def _run_tesseract_ocr(file_bytes: bytes) -> Optional[str]:
+def _run_tesseract_ocr(file_bytes: bytes) -> str | None:
     """Runs pytesseract on image file bytes, returns extracted text or None if error."""
     if not (HAS_PIL and HAS_TESSERACT) or FORCE_OCR_MOCK:
         return None
@@ -47,7 +47,7 @@ def _run_tesseract_ocr(file_bytes: bytes) -> Optional[str]:
         return None
 
 
-def parse_vitals_from_text(text: str) -> Dict[str, Any]:
+def parse_vitals_from_text(text: str) -> dict[str, Any]:
     """Uses regex queries to find lab markers in extracted report text."""
     vitals = {}
     
@@ -84,7 +84,7 @@ def parse_vitals_from_text(text: str) -> Dict[str, Any]:
     return vitals
 
 
-def generate_mock_report_data(file_name: str) -> Dict[str, Any]:
+def generate_mock_report_data(file_name: str) -> dict[str, Any]:
     """Generates realistic mockup data for testing if Tesseract is not available."""
     normalized_name = file_name.lower()
     
@@ -129,7 +129,7 @@ def generate_mock_report_data(file_name: str) -> Dict[str, Any]:
     return vitals
 
 
-def extract_vitals_from_report(file_bytes: bytes, file_name: str) -> Dict[str, Any]:
+def extract_vitals_from_report(file_bytes: bytes, file_name: str) -> dict[str, Any]:
     """
     Main interface to ingest report files and extract numerical metrics.
     Attempts OCR first; falls back to filename heuristics mock if OCR returns nothing.
