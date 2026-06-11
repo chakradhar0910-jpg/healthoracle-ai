@@ -1,0 +1,22 @@
+stages:
+  - test
+  - lint
+
+test-job:
+  stage: test
+  image: python:3.11
+  before_script:
+    - pip install -r requirements.txt
+    - pip install pytest pytest-cov httpx
+  script:
+    - python backend/train.py
+    - pytest --cov=backend --cov-report=term-missing tests/
+
+lint-job:
+  stage: lint
+  image: python:3.11
+  before_script:
+    - pip install ruff mypy types-requests types-urllib3
+  script:
+    - ruff check backend/ tests/
+    - mypy backend/ tests/
