@@ -3,9 +3,8 @@ HealthOracle AI — Feature Engineering & Recommendation Engine
 Converts raw PatientPayload into ML feature vectors and generates clinical recommendations.
 """
 
-import numpy as np
-from typing import Dict, List, Tuple, Any
 
+import numpy as np
 
 # ─────────────────────────────────────────────────────────────────
 # POPULATION DEFAULTS  (used when optional lab fields are absent)
@@ -30,7 +29,7 @@ FAMILY_MAP       = {"None": 0, "One": 1, "Both": 2}
 BP_CATEGORY_MAP  = {"Normal": 0, "Elevated": 1, "High1": 2, "High2": 3}
 
 
-def _bp_from_categorical(bp_str: str) -> Tuple[float, float]:
+def _bp_from_categorical(bp_str: str) -> tuple[float, float]:
     """Converts legacy categorical BP string to (systolic, diastolic)."""
     if bp_str == "High2":   return (145.0, 92.0)
     if bp_str == "High1":   return (133.0, 83.0)
@@ -43,7 +42,7 @@ def compute_bmi(weight_kg: float, height_cm: float) -> float:
     return round(weight_kg / (h * h), 1)
 
 
-def engineer_features(payload) -> Dict[str, np.ndarray]:
+def engineer_features(payload) -> dict[str, np.ndarray]:
     """
     Converts PatientPayload into two feature vectors:
       - diabetes_features  (16 features)
@@ -163,7 +162,7 @@ def engineer_features(payload) -> Dict[str, np.ndarray]:
 # CONTRIBUTING FACTORS ENGINE
 # Returns top-5 factors with name, weight, positive flag
 # ─────────────────────────────────────────────────────────────────
-def compute_contributing_factors(payload, resolved: dict, db_prob: int, hd_prob: int) -> List[dict]:
+def compute_contributing_factors(payload, resolved: dict, db_prob: int, hd_prob: int) -> list[dict]:
     factors = []
     bmi = resolved["bmi"]
     syms = payload.symptoms or []
@@ -280,7 +279,7 @@ def compute_contributing_factors(payload, resolved: dict, db_prob: int, hd_prob:
 # ─────────────────────────────────────────────────────────────────
 # CLINICAL RECOMMENDATIONS ENGINE
 # ─────────────────────────────────────────────────────────────────
-def generate_recommendations(payload, resolved: dict, db_risk: str, hd_risk: str) -> List[str]:
+def generate_recommendations(payload, resolved: dict, db_risk: str, hd_risk: str) -> list[str]:
     recs = []
     syms = payload.symptoms or []
     combs = payload.comorbidities or []

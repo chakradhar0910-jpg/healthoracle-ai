@@ -4,7 +4,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from backend.app import app
-from backend.database import Base, get_db, PatientRiskAssessment
+from backend.database import Base, get_db
 
 # ── Isolated Testing Database Setup ───────────────────────────────────────
 TEST_SQLALCHEMY_DATABASE_URL = "sqlite:///./test_health_oracle.db"

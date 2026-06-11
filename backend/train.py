@@ -11,27 +11,21 @@ Strategy:
 Run:  python backend/train.py
 """
 
-import os
-import sys
 import io
-import warnings
 import json
 import logging
+import warnings
 from pathlib import Path
 
+import joblib
 import numpy as np
 import pandas as pd
 import requests
-import joblib
-
-from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier, VotingClassifier
+from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier, VotingClassifier
 from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, roc_auc_score
+from sklearn.model_selection import StratifiedKFold, cross_val_score, train_test_split
 from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import train_test_split, StratifiedKFold, cross_val_score
-from sklearn.metrics import (
-    classification_report, roc_auc_score, accuracy_score, confusion_matrix
-)
-from sklearn.pipeline import Pipeline
 
 warnings.filterwarnings("ignore")
 logging.basicConfig(level=logging.INFO, format="%(levelname)s | %(message)s")
@@ -263,7 +257,7 @@ def load_pima_diabetes() -> pd.DataFrame:
         log.warning("  ⚠️ PIMA download failed (%s). Checking local cache...", e)
         if cache_path.exists():
             try:
-                with open(cache_path, "r", encoding="utf-8") as f:
+                with open(cache_path, encoding="utf-8") as f:
                     csv_text = f.read()
                 log.info("  ✅ Loaded PIMA dataset from local cache.")
             except Exception as read_err:
@@ -333,7 +327,7 @@ def load_uci_heart() -> pd.DataFrame:
         log.warning("  ⚠️ Heart download failed (%s). Checking local cache...", e)
         if cache_path.exists():
             try:
-                with open(cache_path, "r", encoding="utf-8") as f:
+                with open(cache_path, encoding="utf-8") as f:
                     csv_text = f.read()
                 log.info("  ✅ Loaded Heart dataset from local cache.")
             except Exception as read_err:

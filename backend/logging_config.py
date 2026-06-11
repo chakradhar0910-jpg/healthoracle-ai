@@ -5,10 +5,12 @@ Registers a logger that outputs structured logs to standard output (console)
 and saves rotating logs locally under the `logs/` directory.
 """
 
-import sys
 import logging
+import sys
 from logging.handlers import RotatingFileHandler
-from backend.config import LOG_LEVEL, LOG_FILE_PATH
+
+from backend.config import LOG_FILE_PATH, LOG_LEVEL
+
 
 def setup_logging():
     """Configures the root and healthoracle-specific loggers."""

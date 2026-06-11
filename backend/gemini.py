@@ -7,13 +7,14 @@ generate personalized clinical recommendations, and hold pre-screening dialogues
 
 import json
 import logging
+from typing import Any
+
 import requests
-from typing import Dict, Any, List, Optional
 
 from backend.config import GEMINI_API_KEY
 
 log = logging.getLogger("healthoracle.gemini")
-def call_gemini(prompt: str) -> Optional[str]:
+def call_gemini(prompt: str) -> str | None:
     """
     Sends a prompt request to the Gemini 2.5 Flash API.
     Returns the generated content text or None if an error occurs.
@@ -27,7 +28,7 @@ def call_gemini(prompt: str) -> Optional[str]:
     
     headers = {"Content-Type": "application/json"}
     
-    payload: Dict[str, Any] = {
+    payload: dict[str, Any] = {
         "contents": [
             {
                 "parts": [
@@ -79,12 +80,12 @@ def _clean_json_text(text: str) -> str:
 
 
 def generate_ai_recommendations(
-    payload_dict: Dict[str, Any],
+    payload_dict: dict[str, Any],
     db_prob: int,
     db_risk: str,
     hd_prob: int,
     hd_risk: str
-) -> Optional[List[str]]:
+) -> list[str] | None:
     """
     Asks Gemini to analyze patient biometrics and ML scores
     and returns a list of highly personalized recommendations.
@@ -132,7 +133,7 @@ def generate_ai_recommendations(
         return None
 
 
-def parse_ocr_text_with_gemini(ocr_text: str) -> Optional[Dict[str, float]]:
+def parse_ocr_text_with_gemini(ocr_text: str) -> dict[str, float] | None:
     """
     Uses Gemini to extract structured numeric vitals from messy, unstructured OCR texts.
     """
@@ -183,7 +184,7 @@ def parse_ocr_text_with_gemini(ocr_text: str) -> Optional[Dict[str, float]]:
         return None
 
 
-def ai_chat_completion(message: str, history: List[Dict[str, str]]) -> str:
+def ai_chat_completion(message: str, history: list[dict[str, str]]) -> str:
     """
     Handles a pre-screening conversation with a user about their health risks.
     """

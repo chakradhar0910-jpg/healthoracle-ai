@@ -8,10 +8,10 @@ and declares the database schema for persisting patient prediction history.
 import json
 import logging
 from datetime import datetime
-from typing import List, Dict, Any
+from typing import Any
 
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, Text
-from sqlalchemy.orm import declarative_base, sessionmaker, Session
+from sqlalchemy import Column, DateTime, Integer, String, Text, create_engine
+from sqlalchemy.orm import Session, declarative_base, sessionmaker
 
 from backend.config import DATABASE_URL
 
@@ -67,7 +67,7 @@ def get_db():
 # ── CRUD Operations ────────────────────────────────────────────────────────
 def save_assessment(
     db: Session,
-    payload_dict: Dict[str, Any],
+    payload_dict: dict[str, Any],
     db_prob: int,
     db_risk: str,
     hd_prob: int,
@@ -98,7 +98,7 @@ def save_assessment(
         return None
 
 
-def get_assessments(db: Session, limit: int = 100) -> List[PatientRiskAssessment]:
+def get_assessments(db: Session, limit: int = 100) -> list[PatientRiskAssessment]:
     """Retrieves list of past patient risk assessment runs sorted by time descending."""
     try:
         return (

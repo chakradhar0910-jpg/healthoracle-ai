@@ -3,13 +3,12 @@ HealthOracle AI — ML Model Manager
 Loads trained scikit-learn models at startup and exposes prediction functions.
 """
 
-import os
 import logging
-import joblib
-import numpy as np
 import random
 from pathlib import Path
-from typing import Tuple
+
+import joblib
+import numpy as np
 
 logger = logging.getLogger(__name__)
 
@@ -71,7 +70,7 @@ def _scale(features: np.ndarray, scaler) -> np.ndarray:
     return features
 
 
-def predict_diabetes(features: np.ndarray) -> Tuple[int, int]:
+def predict_diabetes(features: np.ndarray) -> tuple[int, int]:
     """
     Returns (probability_pct: int, confidence_pct: int)
     probability = model's positive class probability × 100
@@ -89,7 +88,7 @@ def predict_diabetes(features: np.ndarray) -> Tuple[int, int]:
     return prob_pct, conf_pct
 
 
-def predict_heart_disease(features: np.ndarray) -> Tuple[int, int]:
+def predict_heart_disease(features: np.ndarray) -> tuple[int, int]:
     """
     Returns (probability_pct: int, confidence_pct: int)
     """

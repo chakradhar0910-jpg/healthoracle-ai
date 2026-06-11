@@ -3,9 +3,9 @@ HealthOracle AI — Pydantic Request/Response Schemas
 Matches the exact JSON payload emitted by frontend/script.js
 """
 
-from pydantic import BaseModel, Field
-from typing import Optional, List
 from datetime import datetime
+
+from pydantic import BaseModel, Field
 
 
 # ─────────────────────────────────────────────────
@@ -13,8 +13,8 @@ from datetime import datetime
 # ─────────────────────────────────────────────────
 class PatientPayload(BaseModel):
     # Patient identity (not used by ML, echoed back)
-    patientName: Optional[str] = "Unknown"
-    mrn: Optional[str] = "N/A"
+    patientName: str | None = "Unknown"
+    mrn: str | None = "N/A"
 
     # Core biometrics
     age: int = Field(..., ge=1, le=115)
@@ -23,17 +23,17 @@ class PatientPayload(BaseModel):
     weight: float = Field(..., ge=10, le=300)      # kg
 
     # Legacy categorical blood pressure (frontend fallback)
-    bp: Optional[str] = None  # "Normal", "Elevated", "High1", "High2"
+    bp: str | None = None  # "Normal", "Elevated", "High1", "High2"
 
     # Lab panel — all optional
-    systolic: Optional[float] = Field(None, ge=70, le=250)
-    diastolic: Optional[float] = Field(None, ge=40, le=150)
-    glucose: Optional[float] = Field(None, ge=50, le=500)      # mg/dL fasting
-    hba1c: Optional[float] = Field(None, ge=3.0, le=18.0)      # %
-    cholesterol: Optional[float] = Field(None, ge=80, le=500)  # mg/dL
-    ldl: Optional[float] = Field(None, ge=30, le=350)          # mg/dL
-    hdl: Optional[float] = Field(None, ge=15, le=150)          # mg/dL
-    triglycerides: Optional[float] = Field(None, ge=30, le=600) # mg/dL
+    systolic: float | None = Field(None, ge=70, le=250)
+    diastolic: float | None = Field(None, ge=40, le=150)
+    glucose: float | None = Field(None, ge=50, le=500)      # mg/dL fasting
+    hba1c: float | None = Field(None, ge=3.0, le=18.0)      # %
+    cholesterol: float | None = Field(None, ge=80, le=500)  # mg/dL
+    ldl: float | None = Field(None, ge=30, le=350)          # mg/dL
+    hdl: float | None = Field(None, ge=15, le=150)          # mg/dL
+    triglycerides: float | None = Field(None, ge=30, le=600) # mg/dL
 
     # Lifestyle
     sleepHours: float = Field(7.0, ge=4.0, le=10.0)
@@ -48,8 +48,8 @@ class PatientPayload(BaseModel):
     familyHeart: str = Field("None", pattern="^(None|One|Both)$")
 
     # Checklists (arrays of strings)
-    symptoms: List[str] = Field(default_factory=list)
-    comorbidities: List[str] = Field(default_factory=list)
+    symptoms: list[str] = Field(default_factory=list)
+    comorbidities: list[str] = Field(default_factory=list)
 
 
 # ─────────────────────────────────────────────────
@@ -69,8 +69,8 @@ class ContributingFactor(BaseModel):
 
 class PredictionResponse(BaseModel):
     predictions: dict        # { diabetes: RiskResult, heart_disease: RiskResult }
-    factors: List[ContributingFactor]
-    recommendations: List[str]
+    factors: list[ContributingFactor]
+    recommendations: list[str]
     timestamp: str
     source: str = "ml_model" # "ml_model" | "fallback"
 
@@ -140,7 +140,7 @@ class ChatMessage(BaseModel):
 
 class ChatRequest(BaseModel):
     message: str = Field(..., min_length=1)
-    history: List[ChatMessage] = Field(default_factory=list)
+    history: list[ChatMessage] = Field(default_factory=list)
 
     model_config = {
         "json_schema_extra": {

@@ -1,12 +1,14 @@
 import os
+
 os.environ["HEALTHORACLE_GEMINI_API_KEY"] = "mock-api-key"
 
-import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 from backend.gemini import (
-    call_gemini, generate_ai_recommendations,
-    parse_ocr_text_with_gemini, ai_chat_completion
+    ai_chat_completion,
+    call_gemini,
+    generate_ai_recommendations,
+    parse_ocr_text_with_gemini,
 )
 
 # ── Mock Responses ────────────────────────────────────────────────────────
