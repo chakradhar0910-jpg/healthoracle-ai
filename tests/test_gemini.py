@@ -12,24 +12,16 @@ from backend.gemini import (
 )
 
 # ── Mock Responses ────────────────────────────────────────────────────────
-MOCK_TEXT_RESPONSE = {
-    "candidates": [
-        {
-            "content": {
-                "parts": [
-                    {"text": "Hello, I am Gemini."}
-                ]
-            }
-        }
-    ]
-}
+MOCK_TEXT_RESPONSE = {"candidates": [{"content": {"parts": [{"text": "Hello, I am Gemini."}]}}]}
 
 MOCK_RECS_RESPONSE = {
     "candidates": [
         {
             "content": {
                 "parts": [
-                    {"text": '["Monitor blood pressure daily.", "Follow a low-glycemic dietary path." ]'}
+                    {
+                        "text": '["Monitor blood pressure daily.", "Follow a low-glycemic dietary path." ]'
+                    }
                 ]
             }
         }
@@ -51,6 +43,7 @@ MOCK_OCR_RESPONSE = {
 
 # ── Tests ──────────────────────────────────────────────────────────────────
 
+
 @patch("backend.gemini.requests.post")
 def test_call_gemini_success(mock_post):
     """Verify that call_gemini successfully makes POST requests and returns text."""
@@ -58,7 +51,7 @@ def test_call_gemini_success(mock_post):
     mock_resp.json.return_value = MOCK_TEXT_RESPONSE
     mock_resp.raise_for_status = MagicMock()
     mock_post.return_value = mock_resp
-    
+
     res = call_gemini("Say hello")
     assert res == "Hello, I am Gemini."
     mock_post.assert_called_once()
@@ -68,7 +61,7 @@ def test_call_gemini_success(mock_post):
 def test_call_gemini_failure(mock_post):
     """Verify that call_gemini handles errors by returning None."""
     mock_post.side_effect = Exception("API Connection Error")
-    
+
     res = call_gemini("Say hello")
     assert res is None
 
@@ -80,10 +73,10 @@ def test_generate_ai_recommendations_success(mock_post):
     mock_resp.json.return_value = MOCK_RECS_RESPONSE
     mock_resp.raise_for_status = MagicMock()
     mock_post.return_value = mock_resp
-    
+
     payload = {"age": 45, "gender": "Male", "glucose": 120}
     recs = generate_ai_recommendations(payload, 42, "Medium", 20, "Low")
-    
+
     assert isinstance(recs, list)
     assert len(recs) == 2
     assert recs[0] == "Monitor blood pressure daily."
@@ -97,9 +90,9 @@ def test_parse_ocr_text_with_gemini_success(mock_post):
     mock_resp.json.return_value = MOCK_OCR_RESPONSE
     mock_resp.raise_for_status = MagicMock()
     mock_post.return_value = mock_resp
-    
+
     vitals = parse_ocr_text_with_gemini("glucose is 110 and hba1c is 5.9")
-    
+
     assert vitals["glucose"] == 110.0
     assert vitals["hba1c"] == 5.9
     assert vitals["systolic"] == 132.0
@@ -113,8 +106,8 @@ def test_ai_chat_completion(mock_post):
     mock_resp.json.return_value = MOCK_TEXT_RESPONSE
     mock_resp.raise_for_status = MagicMock()
     mock_post.return_value = mock_resp
-    
+
     history = [{"role": "user", "content": "hello"}]
     reply = ai_chat_completion("How are you?", history)
-    
+
     assert reply == "Hello, I am Gemini."

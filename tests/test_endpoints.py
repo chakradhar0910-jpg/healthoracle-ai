@@ -9,10 +9,7 @@ from backend.database import Base, get_db
 # ── Isolated Testing Database Setup ───────────────────────────────────────
 TEST_SQLALCHEMY_DATABASE_URL = "sqlite:///./test_health_oracle.db"
 
-engine = create_engine(
-    TEST_SQLALCHEMY_DATABASE_URL, 
-    connect_args={"check_same_thread": False}
-)
+engine = create_engine(TEST_SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
@@ -41,6 +38,7 @@ client = TestClient(app)
 
 
 # ── Tests ──────────────────────────────────────────────────────────────────
+
 
 def test_health_check():
     """Verify that the health check endpoint is responsive."""
@@ -87,12 +85,12 @@ def test_prediction_and_database_persistence():
         "familyDiabetes": "One",
         "familyHeart": "None",
         "symptoms": ["fatigue"],
-        "comorbidities": []
+        "comorbidities": [],
     }
 
     # Post request to /predict
     response = client.post("/predict", json=payload)
-    
+
     # If models are not loaded (e.g. if we are testing in a clean build), the status will be 503.
     # Otherwise, it will be 200. We handle both conditions gracefully.
     if response.status_code == 503:
@@ -104,15 +102,19 @@ def test_prediction_and_database_persistence():
         assert "predictions" in data
         assert "diabetes" in data["predictions"]
         assert "heart_disease" in data["predictions"]
+        assert "kidney_disease" in data["predictions"]
+        assert "liver_disease" in data["predictions"]
+        assert "stroke_risk" in data["predictions"]
+        assert "cancer_prescreen" in data["predictions"]
         assert "factors" in data
         assert "recommendations" in data
         assert data["source"] == "ml_model"
-        
+
         # Test if the entry was persisted to the history database
         history_response = client.get("/history")
         assert history_response.status_code == 200
         history_data = history_response.json()
-        
+
         # We should have at least 1 record
         assert len(history_data) >= 1
         record = history_data[0]
@@ -121,6 +123,10 @@ def test_prediction_and_database_persistence():
         assert record["age"] == 45
         assert "diabetes_risk_level" in record
         assert "heart_risk_level" in record
+        assert "kidney_risk_level" in record
+        assert "liver_risk_level" in record
+        assert "stroke_risk_level" in record
+        assert "cancer_risk_level" in record
 
 
 def test_history_query_limit():
@@ -129,3 +135,99 @@ def test_history_query_limit():
     assert response.status_code == 200
     data = response.json()
     assert len(data) <= 1
+
+
+def test_retrain_endpoint():
+    """Verify that the model auto-retraining endpoint executes successfully."""
+    response = client.post("/retrain")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["success"] is True
+    assert "metrics" in data
+    assert data["metrics"]["version"] == "4.2.0-auto"
+
+
+def test_websocket_telemetry():
+    """Verify that the real-time WebSocket telemetry gateway responds correctly."""
+    with client.websocket_connect("/ws/telemetry") as websocket:
+        websocket.send_json({"resting_hr": 95, "steps": 3000, "systolic": 140, "diastolic": 90})
+        data = websocket.receive_json()
+        assert "heart_probability_delta" in data
+        assert "stroke_probability_delta" in data
+        assert "log_message" in data
+
+
+def test_ai_settings_headers_routing():
+    """Verify that custom X-AI-* headers flow correctly to the LLM backend in /predict."""
+    from unittest.mock import patch
+
+    with patch("backend.gemini.call_llm") as mock_call:
+        mock_call.return_value = '["Urgent: Consult endocrinologist", "Reduce sugar intake"]'
+
+        headers = {
+            "X-AI-Provider": "ollama",
+            "X-AI-Key": "my-fake-token",
+            "X-AI-Endpoint": "http://localhost:11434/v1/chat/completions",
+            "X-AI-Model": "mistral",
+        }
+
+        payload = {
+            "patientName": "Alex Tester",
+            "mrn": "MRN-TEST-999",
+            "age": 45,
+            "gender": "Male",
+            "height": 180.0,
+            "weight": 82.0,
+            "systolic": 128.0,
+            "diastolic": 82.0,
+            "glucose": 105.0,
+            "hba1c": 5.8,
+            "cholesterol": 210.0,
+            "ldl": 130.0,
+            "hdl": 42.0,
+            "triglycerides": 150.0,
+            "sleepHours": 7.0,
+            "dietQuality": 7,
+            "stressLevel": 4,
+            "smoking": "Never",
+            "physicalActivity": "Medium",
+            "alcohol": "None",
+            "familyDiabetes": "One",
+            "familyHeart": "None",
+            "symptoms": ["fatigue"],
+            "comorbidities": [],
+        }
+
+        response = client.post("/predict", json=payload, headers=headers)
+        if response.status_code == 200:
+            args, _ = mock_call.call_args
+            assert args[1] == "ollama"
+            assert args[2] == "my-fake-token"
+            assert args[3] == "http://localhost:11434/v1/chat/completions"
+            assert args[4] == "mistral"
+
+
+def test_chat_ai_headers_routing():
+    """Verify that custom X-AI-* headers flow correctly to the LLM backend in /chat."""
+    from unittest.mock import patch
+
+    with patch("backend.gemini.call_llm") as mock_call:
+        mock_call.return_value = "Hello patient!"
+
+        headers = {
+            "X-AI-Provider": "openai",
+            "X-AI-Key": "bearer-secret-token",
+            "X-AI-Endpoint": "https://api.openai.com/v1/chat/completions",
+            "X-AI-Model": "gpt-4o",
+        }
+
+        chat_payload = {"message": "I feel slightly dizzy", "history": []}
+
+        response = client.post("/chat", json=chat_payload, headers=headers)
+        assert response.status_code == 200
+        assert mock_call.called
+        args, _ = mock_call.call_args
+        assert args[1] == "openai"
+        assert args[2] == "bearer-secret-token"
+        assert args[3] == "https://api.openai.com/v1/chat/completions"
+        assert args[4] == "gpt-4o"

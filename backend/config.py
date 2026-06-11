@@ -19,9 +19,14 @@ DEBUG = os.getenv("HEALTHORACLE_DEBUG", "false").lower() in ("true", "1")
 # ── CORS Settings ─────────────────────────────────────────────────────────
 # Split by commas to support multiple origins (e.g. http://localhost:3000,http://localhost:5173)
 CORS_ORIGINS = [
-    origin.strip() for origin in os.getenv("HEALTHORACLE_CORS_ORIGINS", "*").split(",") if origin.strip()
+    origin.strip()
+    for origin in os.getenv("HEALTHORACLE_CORS_ORIGINS", "*").split(",")
+    if origin.strip()
 ]
-CORS_ALLOW_CREDENTIALS = os.getenv("HEALTHORACLE_CORS_ALLOW_CREDENTIALS", "false").lower() in ("true", "1")
+CORS_ALLOW_CREDENTIALS = os.getenv("HEALTHORACLE_CORS_ALLOW_CREDENTIALS", "false").lower() in (
+    "true",
+    "1",
+)
 
 # ── Logging Settings ──────────────────────────────────────────────────────
 LOG_LEVEL = os.getenv("HEALTHORACLE_LOG_LEVEL", "INFO")
