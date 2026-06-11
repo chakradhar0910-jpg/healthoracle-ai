@@ -47,7 +47,17 @@ The frontend uses custom vanilla styling. Do not introduce half-implemented feat
 
 Ensure that changes do not break the repository quality score:
 
-- **Linting & Formatting**: Enforced via **Ruff**. Configuration is defined in `pyproject.toml`. Run `ruff check backend/ tests/`.
-- **Type Checking**: Enforced via **Mypy**. Run `mypy backend/ tests/`.
+- **Linting & Formatting**: Enforced via **Ruff**, **Pylint**, and **Flake8**.
+  - **Ruff**: Runs fast linter checks. Run `ruff check backend/ tests/`. Format validation runs via `ruff format --check backend/ tests/`. Configured in `pyproject.toml`.
+  - **Pylint**: Runs code analysis and quality checks. Run `pylint backend/`. Configured in `.pylintrc` and `pyproject.toml`.
+  - **Flake8**: Enforces pep8 style checking. Run `flake8 backend/`. Configured in `.flake8`.
+- **Type Checking**: Enforced via **Mypy**. Run `mypy backend/ tests/`. Configured in `pyproject.toml`.
+- **Dead Code Detection**: Enforced via **Vulture**. Run `vulture backend/`. Configured in `.vulture` and `pyproject.toml`.
+- **Security & SAST Analysis**: Enforced via **Bandit** and **Semgrep**.
+  - **Bandit**: Scans for Python security issues. Run `bandit -r backend/ -c bandit.yaml`. Configured in `bandit.yaml` and `pyproject.toml`.
+  - **Semgrep**: Scans code with pattern matching. Run `semgrep --config=.semgrep.yaml backend/`. Configured in `.semgrep.yaml`.
+- **Code Modernization**: Enforced via **Pyupgrade**. Run `find backend/ -name "*.py" | xargs pyupgrade --py311-plus`. Configured in `pyproject.toml`.
 - **Unit Testing**: Enforced via **Pytest** with coverage checks. Run `pytest tests/`.
 - **Pre-commit Checks**: Registered hooks check YAML files, trailing whitespaces, enforce Ruff formatting, run type-checking, search for secrets, and audit dependencies.
+- **GitLab CI Pipeline**: Configured stages run all of the above tests automatically on commit (`test`, `lint`, `format`, `type_check`, `coverage`).
+
