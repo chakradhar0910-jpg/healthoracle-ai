@@ -34,7 +34,7 @@ target-version = "py311"
 select = ["E", "F", "I", "N", "UP", "PL", "RUF"]
 ignore = [
     "PLR2004", "E501", "PLR0913", "PLR0912", "PLR0915", "N806", "RUF005", "E701", "F841", "RUF001",
-    "E402", "PLW0603", "RUF002", "RUF003", "N815", "N803"
+    "E402", "PLW0603", "RUF002", "RUF003", "N815", "N803", "PLC0415"
 ]
 
 [tool.mypy]

@@ -18,9 +18,9 @@ def test_parse_vitals_from_text():
     HDL: 45 mg/dL
     Triglycerides: 185 mg/dL
     """
-    
+
     vitals = parse_vitals_from_text(sample_report_text)
-    
+
     assert vitals["glucose"] == 112.0
     assert vitals["hba1c"] == 6.2
     assert vitals["systolic"] == 135.0
@@ -35,7 +35,7 @@ def test_parse_vitals_partial():
     """Verify regex parses sparse text reports containing only a few indicators."""
     sample_text = "Fasting sugar is 134, a1c is 7.1. Blood pressure is 150 / 95"
     vitals = parse_vitals_from_text(sample_text)
-    
+
     assert vitals["glucose"] == 134.0
     assert vitals["hba1c"] == 7.1
     assert vitals["systolic"] == 150.0
@@ -48,11 +48,11 @@ def test_generate_mock_report_data():
     diabetic_data = generate_mock_report_data("diabetic_screening_lab.jpg")
     assert diabetic_data["glucose"] == 168.0
     assert diabetic_data["hba1c"] == 7.6
-    
+
     cardio_data = generate_mock_report_data("cardio_lipid_panel.png")
     assert cardio_data["cholesterol"] == 265.0
     assert cardio_data["ldl"] == 178.0
-    
+
     normal_data = generate_mock_report_data("generic_report.jpg")
     assert normal_data["glucose"] == 95.0
     assert normal_data["hba1c"] == 5.4
@@ -63,7 +63,7 @@ def test_extract_vitals_from_report_fallback():
     # Test file upload processing
     dummy_bytes = b"fake image bytes"
     vitals = extract_vitals_from_report(dummy_bytes, "diabetic_test.jpg")
-    
+
     assert vitals is not None
     assert vitals["glucose"] == 168.0
     assert vitals["hba1c"] == 7.6

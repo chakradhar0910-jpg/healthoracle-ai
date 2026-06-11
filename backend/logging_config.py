@@ -16,15 +16,15 @@ def setup_logging():
     """Configures the root and healthoracle-specific loggers."""
     log_format = "%(asctime)s | %(levelname)s | %(name)s | %(filename)s:%(lineno)d | %(message)s"
     date_format = "%Y-%m-%d %H:%M:%S"
-    
+
     # Base configuration for standard output
     formatter = logging.Formatter(fmt=log_format, datefmt=date_format)
-    
+
     root_logger = logging.getLogger()
     # Remove existing handlers to avoid duplicates
     for handler in root_logger.handlers[:]:
         root_logger.removeHandler(handler)
-        
+
     root_logger.setLevel(LOG_LEVEL)
 
     # Console Handler
@@ -38,13 +38,13 @@ def setup_logging():
         file_handler = RotatingFileHandler(
             LOG_FILE_PATH,
             maxBytes=5 * 1024 * 1024,  # 5MB size limit per log file
-            backupCount=5,              # Keep up to 5 historical log files
-            encoding="utf-8"
+            backupCount=5,  # Keep up to 5 historical log files
+            encoding="utf-8",
         )
         file_handler.setFormatter(formatter)
         file_handler.setLevel(LOG_LEVEL)
         root_logger.addHandler(file_handler)
-        
+
         # Log basic system details
         logging.getLogger("healthoracle.init").info(
             "Persistent logging initiated at %s", LOG_FILE_PATH
