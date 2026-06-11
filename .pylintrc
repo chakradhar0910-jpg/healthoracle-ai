@@ -1,0 +1,15 @@
+[MASTER]
+ignore=tests
+persistent=yes
+
+[MESSAGES CONTROL]
+disable=
+    C0114, # missing-module-docstring
+    C0115, # missing-class-docstring
+    C0116, # missing-function-docstring
+    C0103, # invalid-name
+    R0903, # too-few-public-methods
+    E0401  # import-error
+
+[FORMAT]
+max-line-length=100

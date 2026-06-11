@@ -1,0 +1,3 @@
+[vulture]
+paths = backend/ tests/
+min_confidence = 80
