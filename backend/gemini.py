@@ -11,14 +11,14 @@ from typing import Any
 
 import requests
 
-from backend.config import GEMINI_API_KEY
+from backend.config import DEFAULT_AI_PROVIDER, GEMINI_API_KEY, OLLAMA_ENDPOINT, OLLAMA_MODEL
 
 log = logging.getLogger("healthoracle.gemini")
 
 
 def call_llm(
     prompt: str,
-    provider: str = "gemini",
+    provider: str | None = None,
     api_key: str | None = None,
     endpoint: str | None = None,
     model: str | None = None,
@@ -26,9 +26,8 @@ def call_llm(
     """
     Unified LLM calling entrypoint.
     Supports Google Gemini, Local Ollama, and Custom OpenAI-compatible endpoints.
-    Allows passing customized API keys (BYOK) and endpoints.
     """
-    provider_name = (provider or "gemini").lower()
+    provider_name = (provider or DEFAULT_AI_PROVIDER or "gemini").lower()
     res_text: str | None = None
 
     if provider_name == "gemini":
@@ -40,11 +39,7 @@ def call_llm(
         headers = {"Content-Type": "application/json"}
         payload: dict[str, Any] = {"contents": [{"parts": [{"text": prompt}]}]}
         try:
-            log.info(
-                "📡 Dispatching request to Gemini API (BYOK)..."
-                if api_key
-                else "📡 Dispatching request to Gemini API..."
-            )
+            log.info("📡 Dispatching request to Gemini API...")
             resp = requests.post(url, json=payload, headers=headers, timeout=12)
             resp.raise_for_status()
             data = resp.json()
@@ -59,51 +54,41 @@ def call_llm(
             else:
                 log.warning("⚠️ Gemini API returned no completion candidates.")
         except Exception as e:
-            log.error("❌ Gemini API request encountered an error: %s", e, exc_info=True)
+            log.error("❌ Gemini API request encountered an error: %s", e)
 
-    else:
-        # Local Ollama or Custom OpenAI-compatible execution
-        url = endpoint or "http://localhost:11434/v1/chat/completions"
+    elif provider_name == "ollama":
+        url = endpoint or OLLAMA_ENDPOINT
+        model_name = model or OLLAMA_MODEL
         headers = {"Content-Type": "application/json"}
-        if api_key:
-            headers["Authorization"] = f"Bearer {api_key}"
-
-        model_name = model or ("llama3" if provider_name == "ollama" else "gpt-3.5-turbo")
-
-        # Check if native Ollama API endpoint is used
+        
+        # Determine if we are using the native Ollama generate API or OpenAI-compatible
         if "/api/generate" in url:
             payload_ollama = {"model": model_name, "prompt": prompt, "stream": False}
             try:
                 log.info("📡 Dispatching request to native Ollama API at %s...", url)
-                resp = requests.post(url, json=payload_ollama, headers=headers, timeout=15)
+                resp = requests.post(url, json=payload_ollama, headers=headers, timeout=120)
                 resp.raise_for_status()
                 data = resp.json()
                 res_text = str(data.get("response", "")).strip()
             except Exception as e:
                 log.error("❌ Native Ollama request failed: %s", e)
         else:
-            # Default to OpenAI-compatible chat completions API
+            # Assume OpenAI-compatible chat completions
             payload_openai = {
                 "model": model_name,
                 "messages": [{"role": "user", "content": prompt}],
                 "temperature": 0.2,
             }
             try:
-                log.info(
-                    "📡 Dispatching request to OpenAI-compatible LLM at %s (Model: %s)...",
-                    url,
-                    model_name,
-                )
-                resp = requests.post(url, json=payload_openai, headers=headers, timeout=15)
+                log.info("📡 Dispatching request to OpenAI-compatible Local AI at %s...", url)
+                resp = requests.post(url, json=payload_openai, headers=headers, timeout=120)
                 resp.raise_for_status()
                 data = resp.json()
                 choices = data.get("choices", [])
                 if choices:
                     res_text = str(choices[0].get("message", {}).get("content", "")).strip()
-                else:
-                    log.warning("⚠️ LLM endpoint returned empty completion choices.")
             except Exception as e:
-                log.error("❌ Custom/Ollama OpenAI-compatible request failed: %s", e)
+                log.error("❌ OpenAI-compatible Local AI request failed: %s", e)
 
     return res_text
 
@@ -135,7 +120,7 @@ def generate_ai_recommendations(
     db_risk: str,
     hd_prob: int,
     hd_risk: str,
-    provider: str = "gemini",
+    provider: str | None = None,
     api_key: str | None = None,
     endpoint: str | None = None,
     model: str | None = None,
@@ -166,6 +151,7 @@ def generate_ai_recommendations(
     
     Format:
     Return ONLY a raw JSON array of strings. Do not include markdown code block syntax.
+    IMPORTANT: Do not output any preamble or conversational text. Output ONLY the JSON.
     Example:
     ["Urgent: Consult an endocrinologist immediately...", "Introduce 30 minutes of daily aerobic activity..."]
     """
@@ -189,7 +175,7 @@ def generate_ai_recommendations(
 
 def parse_ocr_text_with_gemini(
     ocr_text: str,
-    provider: str = "gemini",
+    provider: str | None = None,
     api_key: str | None = None,
     endpoint: str | None = None,
     model: str | None = None,
@@ -214,6 +200,7 @@ def parse_ocr_text_with_gemini(
     Return a flat JSON object where keys are the parameter names and values are floats or integers.
     If a parameter is not mentioned, omit it from the JSON object. Do not output anything except the JSON.
     Do not use markdown code blocks.
+    IMPORTANT: Do not output any preamble or conversational text. Output ONLY the JSON.
     
     OCR Text:
     {ocr_text}
@@ -256,7 +243,7 @@ def parse_ocr_text_with_gemini(
 def ai_chat_completion(
     message: str,
     history: list[dict[str, str]],
-    provider: str = "gemini",
+    provider: str | None = None,
     api_key: str | None = None,
     endpoint: str | None = None,
     model: str | None = None,
