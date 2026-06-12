@@ -37,8 +37,9 @@ import logging
 log = logging.getLogger("healthoracle.api")
 
 from backend.config import CORS_ALLOW_CREDENTIALS, CORS_ORIGINS
+from backend.ai.logic import ai_chat_completion, generate_ai_recommendations
+from backend.ai.router import router as ai_router
 from backend.database import get_assessments, get_db, init_db, save_assessment
-from backend.gemini import ai_chat_completion, generate_ai_recommendations
 from backend.model import (
     are_models_loaded,
     load_models,
@@ -62,6 +63,9 @@ app = FastAPI(
 
 # Initialize dynamic localization middleware
 initialize_l10n(app)
+
+# Mount AI status router
+app.include_router(ai_router)
 
 # ── CORS Middleware Configuration ──────────────────────────────────────────
 app.add_middleware(
