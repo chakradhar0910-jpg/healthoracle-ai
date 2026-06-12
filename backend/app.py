@@ -49,6 +49,7 @@ from backend.model import (
 from backend.ocr import extract_vitals_from_report
 from backend.schemas import AssessmentHistoryRecord, ChatRequest, PatientPayload
 from backend.utils import engineer_features, generate_recommendations
+from backend.l10n import initialize_l10n
 
 # ── FastAPI App ────────────────────────────────────────────────────────────
 app = FastAPI(
@@ -58,6 +59,9 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc",
 )
+
+# Initialize dynamic localization middleware
+initialize_l10n(app)
 
 # ── CORS Middleware Configuration ──────────────────────────────────────────
 app.add_middleware(
