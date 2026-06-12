@@ -44,6 +44,9 @@
                     <option value="en">English</option>
                     <option value="te">తెలుగు (Telugu)</option>
                     <option value="hi">हिन्दी (Hindi)</option>
+                    <option value="es">Español (Spanish)</option>
+                    <option value="fr">Français (French)</option>
+                    <option value="de">Deutsch (German)</option>
                 </select>
 
                 <!-- AI Settings Cog -->
@@ -989,6 +992,31 @@
                             </label>
                         </div>
                         <p class="helper-text mt-1" id="lbl-telemetry-desc">Syncs live heart rate, blood pressure, and step counts via WebSocket. Simulates real-time risk delta offsets.</p>
+                        
+                        <div class="telemetry-controls-panel hidden" id="telemetry-controls-panel">
+                            <div class="telemetry-control-row">
+                                <div class="control-meta">
+                                    <span id="lbl-watch-hr">Simulated Heart Rate</span>
+                                    <span id="watch-val-hr">72 bpm</span>
+                                </div>
+                                <input type="range" id="watch-hr" min="50" max="130" value="72">
+                            </div>
+                            <div class="telemetry-control-row">
+                                <div class="control-meta">
+                                    <span id="lbl-watch-steps">Simulated Daily Steps</span>
+                                    <span id="watch-val-steps">5,000 steps</span>
+                                </div>
+                                <input type="range" id="watch-steps" min="1000" max="15000" step="500" value="5000">
+                            </div>
+                            <div class="telemetry-control-row">
+                                <div class="control-meta">
+                                    <span id="lbl-watch-bp">Simulated Systolic BP</span>
+                                    <span id="watch-val-bp">120 mmHg</span>
+                                </div>
+                                <input type="range" id="watch-bp" min="90" max="180" value="120">
+                            </div>
+                        </div>
+
                         <div class="telemetry-log-console" id="telemetry-console">
                             <div class="telemetry-log-line">
                                 <span>[SYSTEM]</span>
@@ -1010,6 +1038,25 @@
                         <div class="timeline-points-row" id="timeline-points-container">
                             <div class="timeline-progress-bar"></div>
                             <!-- Dynamic history timeline dots -->
+                        </div>
+                    </div>
+
+                    <!-- Clinical History Journal & Saved Records -->
+                    <div class="apple-card history-journal-card no-print">
+                        <div class="card-header-meta border-none mb-3">
+                            <div class="flex-row">
+                                <i data-lucide="history" class="color-purple" style="width: 18px; height: 18px; margin-right: 6px;"></i>
+                                <h4 id="lbl-journal-title">Clinical Screening History Journal</h4>
+                            </div>
+                            <button type="button" class="apple-secondary-btn" id="btn-clear-journal" style="padding: 0.35rem 0.7rem; font-size: 0.75rem;">
+                                <i data-lucide="trash-2"></i>
+                                <span id="lbl-clear-journal">Clear Journal</span>
+                            </button>
+                        </div>
+                        <p class="helper-text mt-1" id="lbl-journal-desc">Locally stored patient pre-screenings. Reload any previous assessment back into the active diagnostic workspace.</p>
+                        
+                        <div class="journal-list" id="journal-list-container">
+                            <p class="helper-text text-center py-3" id="lbl-journal-empty">No previous assessments saved. Submit a patient profile to start logging history.</p>
                         </div>
                     </div>
 
@@ -1042,6 +1089,68 @@
                         <ul class="coach-goals-list" id="coach-goals-container">
                             <!-- Dynamic goals will be rendered by JS -->
                         </ul>
+                    </div>
+
+                    <!-- Clinical Wellness & Lifestyle Prescription (Diet, Exercise, Sleep) -->
+                    <div class="apple-card wellness-prescription-card">
+                        <div class="card-header-meta border-none mb-3">
+                            <div class="flex-row">
+                                <i data-lucide="heart" class="color-red" style="width: 20px; height: 20px; margin-right: 6px;"></i>
+                                <h4 id="lbl-wellness-plan-title">Clinical Wellness & Prescriptive Lifestyle Plan</h4>
+                            </div>
+                            <span class="summary-meta-txt" id="lbl-wellness-plan-subtitle">Therapeutic Interventions</span>
+                        </div>
+                        <p class="helper-text mb-3" id="lbl-wellness-plan-desc">Targeted nutritional regimens, physical training programs, and sleep hygiene rules to mitigate your calculated risk vectors.</p>
+                        
+                        <div class="wellness-sections-grid">
+                            <!-- Diet Plan Column -->
+                            <div class="wellness-section-col">
+                                <div class="col-title-row">
+                                    <i data-lucide="apple" class="color-amber"></i>
+                                    <h5 id="lbl-diet-plan-header">Dietary Prescription</h5>
+                                </div>
+                                <div class="wellness-list-box">
+                                    <div class="food-group">
+                                        <h6 class="food-group-title" id="lbl-diet-eat">Foods to Consume</h6>
+                                        <ul id="diet-eat-list" class="wellness-plan-list">
+                                            <!-- Dynamic items -->
+                                        </ul>
+                                    </div>
+                                    <div class="food-group mt-3">
+                                        <h6 class="food-group-title food-avoid-title" id="lbl-diet-avoid">Foods to Limit/Avoid</h6>
+                                        <ul id="diet-avoid-list" class="wellness-plan-list avoid-list">
+                                            <!-- Dynamic items -->
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Workout Plan Column -->
+                            <div class="wellness-section-col">
+                                <div class="col-title-row">
+                                    <i data-lucide="activity" class="color-blue"></i>
+                                    <h5 id="lbl-workout-plan-header">Physical Exercise Protocol</h5>
+                                </div>
+                                <div class="wellness-list-box">
+                                    <ul id="workout-list" class="wellness-plan-list">
+                                        <!-- Dynamic items -->
+                                    </ul>
+                                </div>
+                            </div>
+                            
+                            <!-- Sleep & Recovery Column -->
+                            <div class="wellness-section-col">
+                                <div class="col-title-row">
+                                    <i data-lucide="moon" class="color-purple"></i>
+                                    <h5 id="lbl-sleep-plan-header">Sleep & Recovery Hygiene</h5>
+                                </div>
+                                <div class="wellness-list-box">
+                                    <ul id="sleep-list" class="wellness-plan-list">
+                                        <!-- Dynamic items -->
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Action Guidelines Panel -->
@@ -1148,6 +1257,8 @@
         </div>
     </div>
 
+    <!-- Localization Package -->
+    <script src="l10n-package.js"></script>
     <!-- Script File -->
     <script src="script.js"></script>
     <script>
