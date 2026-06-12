@@ -1395,9 +1395,14 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         // --- H. LOG HISTORY, CALIBRATION, HEALTH COACH, AND SANDBOX INITIALIZATION ---
+        window.baselineRisks = {
+            heart: data.predictions.heart_disease.probability,
+            stroke: data.predictions.stroke_risk.probability
+        };
         logAssessmentToHistory(data, inputs);
         renderCalibrationDiagram();
         renderAIHealthCoach(data, inputs);
+        renderWellnessPlan(data, inputs);
         initWhatIfSandbox(inputs);
 
         lucide.createIcons();
@@ -1654,6 +1659,64 @@ document.addEventListener("DOMContentLoaded", () => {
     let telemetryWs = null;
     let telemetryTimer = null;
 
+    const watchHr = document.getElementById("watch-hr");
+    const watchSteps = document.getElementById("watch-steps");
+    const watchBp = document.getElementById("watch-bp");
+
+    const watchValHr = document.getElementById("watch-val-hr");
+    const watchValSteps = document.getElementById("watch-val-steps");
+    const watchValBp = document.getElementById("watch-val-bp");
+
+    function updateWatchSlidersUI() {
+        if (watchHr && watchValHr) {
+            watchValHr.textContent = `${watchHr.value} bpm`;
+        }
+        if (watchSteps && watchValSteps) {
+            watchValSteps.textContent = `${parseInt(watchSteps.value).toLocaleString()} steps`;
+        }
+        if (watchBp && watchValBp) {
+            watchValBp.textContent = `${watchBp.value} mmHg`;
+        }
+    }
+
+    if (watchHr) watchHr.addEventListener("input", updateWatchSlidersUI);
+    if (watchSteps) watchSteps.addEventListener("input", updateWatchSlidersUI);
+    if (watchBp) watchBp.addEventListener("input", updateWatchSlidersUI);
+
+    function triggerTelemetryTelemetryUpdate() {
+        if (!chkTelemetrySync || !chkTelemetrySync.checked) return;
+
+        const hr = watchHr ? parseInt(watchHr.value) : 72;
+        const steps = watchSteps ? parseInt(watchSteps.value) : 5000;
+        const sys = watchBp ? parseInt(watchBp.value) : 120;
+        const dia = Math.round(sys * 2 / 3);
+
+        if (telemetryWs && telemetryWs.readyState === WebSocket.OPEN) {
+            const payload = { resting_hr: hr, steps: steps, systolic: sys, diastolic: dia };
+            telemetryWs.send(JSON.stringify(payload));
+        } else {
+            // Local fallback calculations
+            let heart_adj = 0;
+            if (hr > 90) heart_adj += 18;
+            else if (hr > 80) heart_adj += 8;
+            if (steps < 4000) heart_adj += 12;
+            else if (steps > 8000) heart_adj -= 6;
+            
+            let stroke_adj = 0;
+            if (sys >= 140 || dia >= 90) stroke_adj += 20;
+            if (hr > 90) stroke_adj += 12;
+
+            applyLiveTelemetryOffsets(heart_adj, stroke_adj);
+        }
+    }
+
+    [watchHr, watchSteps, watchBp].forEach(slider => {
+        if (slider) {
+            slider.addEventListener("change", triggerTelemetryTelemetryUpdate);
+            slider.addEventListener("input", triggerTelemetryTelemetryUpdate);
+        }
+    });
+
     function connectTelemetryWebSocket() {
         const wsProto = window.location.protocol === "https:" ? "wss:" : "ws:";
         let wsUrl = "";
@@ -1670,14 +1733,20 @@ document.addEventListener("DOMContentLoaded", () => {
             
             telemetryWs.onopen = () => {
                 appendTelemetryLog("SYSTEM", "WebSocket Telemetry Gateway Connected. Sync active.");
+                triggerTelemetryTelemetryUpdate(); // send initial state
                 
                 telemetryTimer = setInterval(() => {
                     if (telemetryWs.readyState === WebSocket.OPEN) {
+                        const hr = watchHr ? parseInt(watchHr.value) : 72;
+                        const steps = watchSteps ? parseInt(watchSteps.value) : 5000;
+                        const sys = watchBp ? parseInt(watchBp.value) : 120;
+                        const dia = Math.round(sys * 2 / 3);
+                        
                         const payload = {
-                            resting_hr: Math.floor(Math.random() * 41) + 65, // 65 - 105
-                            steps: Math.floor(Math.random() * 7000) + 3000, // 3000 - 10000
-                            systolic: Math.floor(Math.random() * 51) + 110, // 110 - 160
-                            diastolic: Math.floor(Math.random() * 31) + 70   // 70 - 100
+                            resting_hr: hr,
+                            steps: steps,
+                            systolic: sys,
+                            diastolic: dia
                         };
                         appendTelemetryLog("SEND", `Smartwatch telemetry: HR=${payload.resting_hr}bpm, Steps=${payload.steps}, BP=${payload.systolic}/${payload.diastolic}`);
                         telemetryWs.send(JSON.stringify(payload));
@@ -1713,11 +1782,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function runLocalTelemetryFallbackSimulation() {
         appendTelemetryLog("SYSTEM", "Initiating local smartwatch simulator...");
+        triggerTelemetryTelemetryUpdate(); // initial local evaluation
         telemetryTimer = setInterval(() => {
-            const hr = Math.floor(Math.random() * 41) + 65;
-            const steps = Math.floor(Math.random() * 7000) + 3000;
-            const sys = Math.floor(Math.random() * 51) + 110;
-            const dia = Math.floor(Math.random() * 31) + 70;
+            const hr = watchHr ? parseInt(watchHr.value) : 72;
+            const steps = watchSteps ? parseInt(watchSteps.value) : 5000;
+            const sys = watchBp ? parseInt(watchBp.value) : 120;
+            const dia = Math.round(sys * 2 / 3);
             
             appendTelemetryLog("LOCAL-SEND", `Simulated smartwatch stats: HR=${hr}bpm, Steps=${steps}, BP=${sys}/${dia}`);
             
@@ -1740,9 +1810,11 @@ document.addEventListener("DOMContentLoaded", () => {
         const heartProbEl = document.getElementById("heart-prob");
         const strokeProbEl = document.getElementById("stroke-prob");
         
+        const baseHeart = (window.baselineRisks && window.baselineRisks.heart !== undefined) ? window.baselineRisks.heart : 14;
+        const baseStroke = (window.baselineRisks && window.baselineRisks.stroke !== undefined) ? window.baselineRisks.stroke : 12;
+        
         if (heartProbEl) {
-            let currentHeartVal = parseInt(heartProbEl.textContent) || 0;
-            let newHeartVal = Math.min(Math.max(currentHeartVal + hrDelta, 2), 98);
+            let newHeartVal = Math.min(Math.max(baseHeart + hrDelta, 2), 98);
             heartProbEl.textContent = newHeartVal + "%";
             animateProgressGauge(document.getElementById("heart-ring"), newHeartVal);
             
@@ -1755,8 +1827,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         
         if (strokeProbEl) {
-            let currentStrokeVal = parseInt(strokeProbEl.textContent) || 0;
-            let newStrokeVal = Math.min(Math.max(currentStrokeVal + strDelta, 2), 98);
+            let newStrokeVal = Math.min(Math.max(baseStroke + strDelta, 2), 98);
             strokeProbEl.textContent = newStrokeVal + "%";
             animateProgressGauge(document.getElementById("stroke-ring"), newStrokeVal);
             
@@ -1796,9 +1867,12 @@ document.addEventListener("DOMContentLoaded", () => {
     const chkTelemetrySync = document.getElementById("chk-telemetry-sync");
     if (chkTelemetrySync) {
         chkTelemetrySync.addEventListener("change", (e) => {
+            const ctrlPanel = document.getElementById("telemetry-controls-panel");
             if (e.target.checked) {
+                if (ctrlPanel) ctrlPanel.classList.remove("hidden");
                 connectTelemetryWebSocket();
             } else {
+                if (ctrlPanel) ctrlPanel.classList.add("hidden");
                 stopTelemetryWebSocket();
             }
         });
@@ -1952,6 +2026,7 @@ document.addEventListener("DOMContentLoaded", () => {
         
         localStorage.setItem("healthoracle_assessments_history", JSON.stringify(history));
         renderLongitudinalTimeline();
+        renderHistoryJournal();
     }
 
     function renderLongitudinalTimeline() {
@@ -1992,6 +2067,103 @@ document.addEventListener("DOMContentLoaded", () => {
                 <span class="timeline-risk-val">${maxProb}%</span>
             `;
             container.appendChild(point);
+        });
+    }
+
+    function renderHistoryJournal() {
+        const journalContainer = document.getElementById("journal-list-container");
+        if (!journalContainer) return;
+
+        journalContainer.innerHTML = "";
+
+        let history = [];
+        try {
+            history = JSON.parse(localStorage.getItem("healthoracle_assessments_history")) || [];
+        } catch(e) {}
+
+        if (history.length === 0) {
+            journalContainer.innerHTML = `<p class="helper-text text-center py-3" id="lbl-journal-empty">No previous assessments saved. Submit a patient profile to start logging history.</p>`;
+            return;
+        }
+
+        // Render most recent first
+        const sortedHistory = [...history].reverse();
+
+        sortedHistory.forEach((entry) => {
+            let maxProb = 0;
+            let maxDisease = "";
+            for (const [disease, pred] of Object.entries(entry.predictions)) {
+                if (pred.probability > maxProb) {
+                    maxProb = pred.probability;
+                    maxDisease = disease;
+                }
+            }
+
+            const item = document.createElement("div");
+            item.className = "journal-item";
+
+            const diseaseMapShort = {
+                diabetes: "Diabetes", heart_disease: "Cardiac", kidney_disease: "Kidney",
+                liver_disease: "Liver", stroke_risk: "Stroke", cancer_prescreen: "Cancer"
+            };
+            const subtitleText = `${entry.date} • Max Risk: ${maxProb}% (${diseaseMapShort[maxDisease] || maxDisease}) • Age ${entry.age}`;
+
+            item.innerHTML = `
+                <div class="journal-item-meta">
+                    <span class="journal-item-title">${entry.name} (${entry.mrn})</span>
+                    <span class="journal-item-subtitle">${subtitleText}</span>
+                </div>
+                <div class="journal-item-actions">
+                    <button type="button" class="btn-journal-action btn-load-journal" title="Load Assessment" aria-label="Load Assessment">
+                        <i data-lucide="folder-open"></i>
+                    </button>
+                    <button type="button" class="btn-journal-action btn-journal-action-delete" title="Delete Entry" aria-label="Delete Entry">
+                        <i data-lucide="trash-2"></i>
+                    </button>
+                </div>
+            `;
+
+            const loadBtn = item.querySelector(".btn-load-journal");
+            if (loadBtn) {
+                loadBtn.addEventListener("click", () => {
+                    loadPatientProfileIntoForm(entry);
+                });
+            }
+
+            const deleteBtn = item.querySelector(".btn-journal-action-delete");
+            if (deleteBtn) {
+                deleteBtn.addEventListener("click", () => {
+                    deleteAssessmentFromHistory(entry.timestamp);
+                });
+            }
+
+            journalContainer.appendChild(item);
+        });
+
+        lucide.createIcons();
+    }
+
+    function deleteAssessmentFromHistory(timestamp) {
+        let history = [];
+        try {
+            history = JSON.parse(localStorage.getItem("healthoracle_assessments_history")) || [];
+        } catch(e) {}
+
+        const filtered = history.filter(entry => entry.timestamp !== timestamp);
+        localStorage.setItem("healthoracle_assessments_history", JSON.stringify(filtered));
+
+        renderHistoryJournal();
+        renderLongitudinalTimeline();
+    }
+
+    const btnClearJournal = document.getElementById("btn-clear-journal");
+    if (btnClearJournal) {
+        btnClearJournal.addEventListener("click", () => {
+            if (confirm("Are you sure you want to clear all screening history logs?")) {
+                localStorage.removeItem("healthoracle_assessments_history");
+                renderHistoryJournal();
+                renderLongitudinalTimeline();
+            }
         });
     }
 
@@ -2099,6 +2271,108 @@ document.addEventListener("DOMContentLoaded", () => {
         });
         
         lucide.createIcons();
+    }
+
+    function renderWellnessPlan(results, inputs) {
+        const dietEatList = document.getElementById("diet-eat-list");
+        const dietAvoidList = document.getElementById("diet-avoid-list");
+        const workoutList = document.getElementById("workout-list");
+        const sleepList = document.getElementById("sleep-list");
+
+        if (!dietEatList || !dietAvoidList || !workoutList || !sleepList) return;
+
+        dietEatList.innerHTML = "";
+        dietAvoidList.innerHTML = "";
+        workoutList.innerHTML = "";
+        sleepList.innerHTML = "";
+
+        const preds = results.predictions;
+        const bmi = inputs.weight / ((inputs.height / 100) * (inputs.height / 100));
+
+        const foodsToEat = [];
+        const foodsToAvoid = [];
+
+        if (preds.diabetes.probability >= 30 || (inputs.hba1c && inputs.hba1c >= 5.7) || (inputs.glucose && inputs.glucose >= 100)) {
+            foodsToEat.push("Low glycemic index foods (leafy greens, legumes, oats)", "High-fiber foods to slow glucose absorption");
+            foodsToAvoid.push("Simple sugars, sweetened beverages, fruit juices", "Refined carbohydrates (white bread, white rice)");
+        }
+        if (preds.heart_disease.probability >= 30 || preds.stroke_risk.probability >= 30 || (inputs.systolic && inputs.systolic >= 130) || (inputs.cholesterol && inputs.cholesterol >= 200)) {
+            foodsToEat.push("Omega-3 rich foods (wild salmon, chia seeds, walnuts)", "Soluble fibers (oats, barley, apples) to reduce LDL");
+            foodsToAvoid.push("Excessive sodium and table salt (limit to <1,500mg daily)", "Saturated fats, trans-fats, and fatty cuts of meat");
+        }
+        if (preds.kidney_disease.probability >= 30) {
+            foodsToEat.push("Controlled, high-quality plant-based protein", "Hydration supporting foods (cucumbers, berries)");
+            foodsToAvoid.push("Excessive protein supplements and red meat", "High-phosphorus foods (colas, dark sodas)");
+        }
+        if (preds.liver_disease.probability >= 30) {
+            foodsToEat.push("Cruciferous vegetables (broccoli, Brussels sprouts)", "Antioxidant-rich berries and green tea");
+            foodsToAvoid.push("Alcohol of any form (strict abstinence recommended)", "High-fructose corn syrup and trans-fats");
+        }
+
+        if (foodsToEat.length < 3) {
+            foodsToEat.push("Colorful vegetables and fresh fruits (Mediterranean style)", "Healthy fats (extra virgin olive oil, avocados)", "Lean proteins (poultry, legumes, fish)");
+        }
+        if (foodsToAvoid.length < 2) {
+            foodsToAvoid.push("Ultra-processed foods and deep-fried snacks", "Sugary treats and refined flour (maida)");
+        }
+
+        const uniqueEat = [...new Set(foodsToEat)].slice(0, 4);
+        const uniqueAvoid = [...new Set(foodsToAvoid)].slice(0, 4);
+
+        uniqueEat.forEach(item => {
+            const li = document.createElement("li");
+            li.textContent = item;
+            dietEatList.appendChild(li);
+        });
+
+        uniqueAvoid.forEach(item => {
+            const li = document.createElement("li");
+            li.textContent = item;
+            dietAvoidList.appendChild(li);
+        });
+
+        const workoutItems = [];
+
+        if (preds.heart_disease.probability >= 30 || preds.stroke_risk.probability >= 30) {
+            workoutItems.push("Moderate-intensity aerobic exercise (brisk walking, cycling) 30-40 mins, 5 days/wk.", "Zone 2 cardio training to build capillary density and arterial elasticity.", "Avoid sudden high-intensity bursts without medical clearance.");
+        }
+        if (preds.diabetes.probability >= 30) {
+            workoutItems.push("Resistance training (strength training, bodyweight exercises) 2-3 times/wk to enhance insulin sensitivity.", "10-15 minute walk immediately after meals to reduce postprandial glucose spikes.");
+        }
+        if (bmi >= 30) {
+            workoutItems.push("Low-impact joints-friendly cardiovascular exercises (swimming, elliptical, walking).", "Structured resistance training to preserve lean muscle mass during weight loss.");
+        }
+
+        if (workoutItems.length < 3) {
+            workoutItems.push("150 minutes of moderate aerobic exercise weekly (brisk walking, swimming).", "2 days of full-body resistance training to support metabolic rate.", "10 minutes of dynamic mobility and flexibility exercises daily.");
+        }
+
+        const uniqueWorkout = [...new Set(workoutItems)].slice(0, 4);
+        uniqueWorkout.forEach(item => {
+            const li = document.createElement("li");
+            li.textContent = item;
+            workoutList.appendChild(li);
+        });
+
+        const sleepItems = [];
+
+        if (inputs.sleepHours < 6.5) {
+            sleepItems.push("Aim for a strict 7-8 hours window of sleep daily.", "Maintain a dark, cool (65°F/18°C), and quiet sleep environment.", "Establish a consistent wake/sleep schedule, even on weekends.");
+        }
+        if (inputs.stressLevel > 6) {
+            sleepItems.push("Practice 10-15 minutes of mindfulness meditation or box breathing before bed.", "No screen time (blue light) at least 1 hour before sleeping.", "Limit caffeine intake after 12:00 PM.");
+        }
+
+        if (sleepItems.length < 3) {
+            sleepItems.push("Avoid large meals or intense workouts 2-3 hours before bed.", "Keep all screens and electronics out of the bedroom.", "Expose eyes to bright natural sunlight within 30 minutes of waking.");
+        }
+
+        const uniqueSleep = [...new Set(sleepItems)].slice(0, 4);
+        uniqueSleep.forEach(item => {
+            const li = document.createElement("li");
+            li.textContent = item;
+            sleepList.appendChild(li);
+        });
     }
 
     // Doctor dashboard triage admissions queue
@@ -2483,6 +2757,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         checkServerStatus();
         renderLongitudinalTimeline();
+        renderHistoryJournal();
         checkEmergencyAlert();
     });
 
@@ -2601,4 +2876,5 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Initial drawings
     renderLongitudinalTimeline();
+    renderHistoryJournal();
 });
