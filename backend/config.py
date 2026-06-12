@@ -51,7 +51,11 @@ HD_SCALER_PATH = MODELS_DIR / "heart_scaler.pkl"
 FORCE_OCR_MOCK = os.getenv("HEALTHORACLE_FORCE_OCR_MOCK", "false").lower() in ("true", "1")
 TESSERACT_CMD = os.getenv("HEALTHORACLE_TESSERACT_CMD", "")
 
-# ── Gemini LLM Settings ───────────────────────────────────────────────────
+# ── Gemini / Local AI (Ollama) Settings ───────────────────────────────────
 # Set via environment variable or .env file — NEVER hardcode keys here
-# export HEALTHORACLE_GEMINI_API_KEY="your-key-here"
 GEMINI_API_KEY = os.getenv("HEALTHORACLE_GEMINI_API_KEY", "")
+
+# Local AI / Ollama Settings
+DEFAULT_AI_PROVIDER = os.getenv("HEALTHORACLE_DEFAULT_AI_PROVIDER", "gemini")
+OLLAMA_ENDPOINT = os.getenv("HEALTHORACLE_OLLAMA_ENDPOINT", "http://127.0.0.1:11434/api/generate")
+OLLAMA_MODEL = os.getenv("HEALTHORACLE_OLLAMA_MODEL", "llama3.2:1b")

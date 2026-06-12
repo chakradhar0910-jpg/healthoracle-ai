@@ -2808,11 +2808,15 @@ document.addEventListener("DOMContentLoaded", () => {
             inputAiKey.placeholder = "Enter your Google Gemini API Key";
             inputAiModel.placeholder = "e.g. gemini-2.5-flash";
         } else if (provider === "ollama") {
-            inputAiEndpoint.placeholder = "e.g. http://localhost:11434/v1/chat/completions";
-            if (!inputAiEndpoint.value) inputAiEndpoint.value = "http://localhost:11434/v1/chat/completions";
+            inputAiEndpoint.placeholder = "e.g. http://127.0.0.1:11434/api/generate";
+            if (!inputAiEndpoint.value || inputAiEndpoint.value.includes("/v1/chat/completions")) {
+                inputAiEndpoint.value = "http://127.0.0.1:11434/api/generate";
+            }
             inputAiKey.placeholder = "Omit for local deployment (no auth)";
-            inputAiModel.placeholder = "e.g. llama3";
-            if (!inputAiModel.value) inputAiModel.value = "llama3";
+            inputAiModel.placeholder = "e.g. llama3.2:1b";
+            if (!inputAiModel.value || inputAiModel.value === "llama3") {
+                inputAiModel.value = "llama3.2:1b";
+            }
         } else {
             inputAiEndpoint.placeholder = "e.g. https://api.openai.com/v1/chat/completions";
             inputAiKey.placeholder = "Enter authorization bearer token";
