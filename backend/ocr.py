@@ -10,7 +10,7 @@ import logging
 import re
 from typing import Any
 
-from backend.gemini import parse_ocr_text_with_gemini
+from backend.ai.logic import parse_ocr_text_with_ai
 
 log = logging.getLogger("healthoracle.ocr")
 
@@ -152,10 +152,10 @@ def extract_vitals_from_report(
     extracted_text = _run_tesseract_ocr(file_bytes)
 
     if extracted_text:
-        # Try to parse with Gemini first for clinical precision
-        vitals = parse_ocr_text_with_gemini(extracted_text, provider, api_key, endpoint, model)
+        # Try to parse with AI first for clinical precision
+        vitals = parse_ocr_text_with_ai(extracted_text, provider, api_key, endpoint, model)
         if vitals:
-            log.info("✅ Extracted structured vitals using Gemini OCR.")
+            log.info("✅ Extracted structured vitals using AI OCR.")
             return vitals
 
         # Fallback to local regex if Gemini fails or is disabled
