@@ -1,0 +1,52 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+
+# Virtual environments
+venv/
+.venv/
+env/
+.env/
+
+# Environment variables — NEVER commit real secrets
+.env
+.env.local
+.env.production
+*.env
+
+# Trained ML model files (large binary files)
+backend/models/*.pkl
+backend/models/*.joblib
+
+# Dataset cache files
+dataset/pima_raw_cache.csv
+dataset/heart_raw_cache.csv
+
+# Logs
+logs/
+*.log
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Test artifacts
+test_api.py

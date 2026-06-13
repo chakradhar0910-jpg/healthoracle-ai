@@ -1,0 +1,60 @@
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = "-ra -q --cov=backend --cov-report=term-missing --cov-report=xml"
+testpaths = [
+    "tests",
+]
+pythonpath = [
+    ".",
+]
+
+[tool.black]
+line-length = 100
+target-version = ['py311']
+exclude = '''
+/(
+    \.git
+  | \.venv
+  | _build
+  | build
+  | dist
+)/
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 100
+multi_line_output = 3
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "PL", "RUF"]
+ignore = [
+    "PLR2004", "E501", "PLR0913", "PLR0912", "PLR0915", "N806", "RUF005", "E701", "F841", "RUF001",
+    "E402", "PLW0603", "RUF002", "RUF003", "N815", "N803", "PLC0415"
+]
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
+
+[tool.vulture]
+paths = ["backend", "tests"]
+min_confidence = 80
+
+[tool.bandit]
+targets = ["backend"]
+exclude_dirs = ["tests"]
+
+[tool.pylint.main]
+ignore-paths = ["tests/"]
+
+[tool.pyupgrade]
+py311-plus = true
+keep-runtime-typing = true
+

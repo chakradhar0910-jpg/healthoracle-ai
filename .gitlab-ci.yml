@@ -1,0 +1,99 @@
+stages:
+  - test
+  - lint
+  - format
+  - type_check
+  - coverage
+
+test-job:
+  stage: test
+  image: python:3.11
+  before_script:
+    - pip install -r requirements.txt
+    - pip install pytest pytest-cov httpx
+  script:
+    - python backend/train.py
+    - pytest --cov=backend --cov-report=term-missing tests/
+
+lint-ruff:
+  stage: lint
+  image: python:3.11
+  before_script:
+    - pip install ruff
+  script:
+    - ruff check backend/ tests/
+
+lint-pylint:
+  stage: lint
+  image: python:3.11
+  before_script:
+    - pip install pylint -r requirements.txt
+  script:
+    - pylint backend/
+
+lint-flake8:
+  stage: lint
+  image: python:3.11
+  before_script:
+    - pip install flake8
+  script:
+    - flake8 backend/
+
+lint-semgrep:
+  stage: lint
+  image: python:3.11
+  before_script:
+    - pip install semgrep
+  script:
+    - semgrep --config=.semgrep.yaml backend/
+
+lint-vulture:
+  stage: lint
+  image: python:3.11
+  before_script:
+    - pip install vulture
+  script:
+    - vulture backend/
+
+lint-bandit:
+  stage: lint
+  image: python:3.11
+  before_script:
+    - pip install bandit
+  script:
+    - bandit -r backend/ -c bandit.yaml
+
+lint-pyupgrade:
+  stage: lint
+  image: python:3.11
+  before_script:
+    - pip install pyupgrade
+  script:
+    - find backend/ -name "*.py" | xargs pyupgrade --py311-plus
+
+
+format-job:
+  stage: format
+  image: python:3.11
+  before_script:
+    - pip install ruff
+  script:
+    - ruff format --check backend/ tests/
+
+type-check-job:
+  stage: type_check
+  image: python:3.11
+  before_script:
+    - pip install mypy types-requests types-urllib3 -r requirements.txt
+  script:
+    - mypy backend/ tests/
+
+coverage-job:
+  stage: coverage
+  image: python:3.11
+  before_script:
+    - pip install -r requirements.txt
+    - pip install pytest pytest-cov httpx
+  script:
+    - pytest --cov=backend --cov-report=term-missing --cov-fail-under=80 tests/
+

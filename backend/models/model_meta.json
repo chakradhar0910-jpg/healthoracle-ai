@@ -1,0 +1,16 @@
+{
+    "version": "4.2.0-auto",
+    "last_trained": "2026-06-13T05:58:31.380032",
+    "accuracy": 0.856,
+    "f1_score": 0.848,
+    "samples": 2500,
+    "active_features": [
+        "age",
+        "gender",
+        "bmi",
+        "systolic",
+        "diastolic",
+        "glucose",
+        "hba1c"
+    ]
+}

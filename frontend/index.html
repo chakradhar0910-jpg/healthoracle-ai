@@ -1,0 +1,1280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="HealthOracle AI Clinical Suite - Hospital-grade diagnostic risk calculator for Diabetes and Cardiovascular diseases.">
+    <title>HealthOracle AI - Clinical Pre-Screening Suite</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Apple Fluid Background Orbs -->
+    <div class="fluid-glow glow-blue no-print"></div>
+    <div class="fluid-glow glow-purple no-print"></div>
+    <div class="fluid-glow glow-turquoise no-print"></div>
+
+    <div class="apple-container">
+        <!-- Emergency Critical Banner -->
+        <div class="emergency-critical-banner hidden" id="emergency-banner">
+            <i data-lucide="alert-triangle"></i>
+            <span id="emergency-banner-text">CRITICAL MEDICAL ALERT: Extreme hypertensive vitals or acute pain symptoms detected. Direct clinical intervention advised immediately!</span>
+        </div>
+
+        <!-- Header -->
+        <header class="glass-header no-print">
+            <div class="logo-area">
+                <div class="logo-symbol">
+                    <i data-lucide="activity" class="pulsing-logo"></i>
+                </div>
+                <div class="title-meta">
+                    <h1>HealthOracle <span class="accent-text" id="header-accent-title">Clinical Suite</span></h1>
+                    <span class="version-label" id="header-version-label">v4.0 Hospital Pre-Screening</span>
+                </div>
+            </div>
+            
+            <div class="header-actions">
+                <!-- Language Switcher -->
+                <select id="lang-select" class="header-select no-print">
+                    <option value="en">English</option>
+                    <option value="te">తెలుగు (Telugu)</option>
+                    <option value="hi">हिन्दी (Hindi)</option>
+                    <option value="es">Español (Spanish)</option>
+                    <option value="fr">Français (French)</option>
+                    <option value="de">Deutsch (German)</option>
+                </select>
+
+                <!-- Quick Ollama Toggle Button -->
+                <button type="button" id="btn-ollama-quick" class="header-icon-btn no-print" title="Switch to Local Ollama" aria-label="Switch to Local Ollama">
+                    <i data-lucide="zap"></i>
+                    <span style="font-size: 0.7rem; font-weight: 600; margin-left: 2px;">Ollama</span>
+                </button>
+
+                <!-- AI Settings Cog -->
+                <button type="button" id="btn-ai-settings" class="header-icon-btn no-print" title="Configure AI Provider" aria-label="Configure AI Provider">
+                    <i data-lucide="settings"></i>
+                </button>
+
+                <div class="remember-pill">
+                    <label class="switch-container">
+                        <input type="checkbox" id="chk-save-profile">
+                        <span class="switch-slider"></span>
+                    </label>
+                    <span class="switch-label" id="lbl-remember-form">Remember Form</span>
+                </div>
+                <div class="api-status-pill" id="api-status">
+                    <span class="status-indicator-dot dot-warm"></span>
+                    <span class="status-label" id="lbl-api-status">Offline Preview Mode</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- View Portal Toggles -->
+        <div class="portal-toggles-container no-print">
+            <button type="button" class="btn-portal-switch active" id="btn-portal-patient">
+                <i data-lucide="user"></i>
+                <span id="lbl-btn-portal-patient">Patient Screening Portal</span>
+            </button>
+            <button type="button" class="btn-portal-switch" id="btn-portal-doctor">
+                <i data-lucide="briefcase"></i>
+                <span id="lbl-btn-portal-doctor">Doctor Triage Portal</span>
+            </button>
+        </div>
+
+        <!-- Main Dashboard Workspace -->
+        <main class="grid-workspace">
+            <!-- Doctor Dashboard Triage Portal Panel -->
+            <section class="apple-card triage-table-card no-print hidden" id="doctor-dashboard-panel" style="grid-column: 1 / -1;">
+                <div class="card-header-meta border-none mb-3">
+                    <div class="flex-row">
+                        <i data-lucide="list-ordered" class="color-purple" style="width: 20px; height: 20px; margin-right: 6px;"></i>
+                        <h4 id="lbl-triage-title">Clinician Admissions Triage Queue</h4>
+                    </div>
+                    <button type="button" class="apple-secondary-btn" id="btn-retrain-models" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">
+                        <i data-lucide="refresh-cw"></i>
+                        <span id="lbl-btn-retrain">Run Model Auto-Retrain</span>
+                    </button>
+                </div>
+                <p class="helper-text mb-3" id="lbl-triage-desc">Queue sorted by descending risk severity. Select any row to load the clinical profile details.</p>
+                <div style="overflow-x: auto;">
+                    <table class="clinical-labs-table">
+                        <thead>
+                            <tr>
+                                <th id="th-patient">Patient Name (MRN)</th>
+                                <th id="th-agesex">Age / Sex</th>
+                                <th id="th-maxrisk">Max Risk Severity</th>
+                                <th id="th-summary">Details Summary</th>
+                                <th id="th-action">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="triage-table-body">
+                            <!-- Dynamic admissions queue -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Left Side: Hospital Survey Survey (Form) -->
+            <section class="apple-card main-form-panel no-print">
+                <div class="panel-headline-tabs">
+                    <div class="tab-btn active" data-step="1">
+                        <i data-lucide="user-check"></i>
+                        <span>1. Admission</span>
+                    </div>
+                    <div class="tab-btn" data-step="2">
+                        <i data-lucide="clipboard-list"></i>
+                        <span>2. History</span>
+                    </div>
+                    <div class="tab-btn" data-step="3">
+                        <i data-lucide="beaker"></i>
+                        <span>3. Symptoms & Labs</span>
+                    </div>
+                </div>
+
+                <form id="health-form" autocomplete="off">
+                    
+                    <!-- STEP 1: Admission & Biometrics -->
+                    <div class="step-container" id="step-1-container">
+                        <div class="step-header">
+                            <h3>Patient Admission Records</h3>
+                            <p class="helper-text">Register patient identification parameters and basic body measurements.</p>
+                        </div>
+
+                        <div class="survey-row-2">
+                            <div class="field-item">
+                                <label for="patient_name">Patient Full Name</label>
+                                <input type="text" id="patient_name" name="patient_name" placeholder="e.g. John Doe" required>
+                            </div>
+                            <div class="field-item">
+                                <label for="mrn">Medical Record Number (MRN)</label>
+                                <input type="text" id="mrn" name="mrn" placeholder="e.g. MRN-2026-8912" required>
+                            </div>
+                        </div>
+
+                        <div class="survey-row-3 mt-3">
+                            <div class="field-item">
+                                <label for="age">Age</label>
+                                <input type="number" id="age" name="age" min="1" max="115" placeholder="e.g. 52" required>
+                            </div>
+                            
+                            <div class="field-item">
+                                <label>Biological Sex</label>
+                                <div class="segmented-control">
+                                    <label class="segment">
+                                        <input type="radio" name="gender" value="Male" checked required>
+                                        <span class="segment-label">Male</span>
+                                    </label>
+                                    <label class="segment">
+                                        <input type="radio" name="gender" value="Female">
+                                        <span class="segment-label">Female</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="field-item">
+                                <label for="dob">Date of Birth</label>
+                                <input type="date" id="dob" name="dob" required>
+                            </div>
+                        </div>
+
+                        <!-- Drag and Drop OCR Box -->
+                        <div class="ocr-dropzone-box mt-3" id="ocr-dropzone">
+                            <i data-lucide="upload-cloud"></i>
+                            <h5 id="lbl-ocr-title">Upload Lab Report (OCR)</h5>
+                            <p id="lbl-ocr-desc">Drag & drop blood reports PDF/Image to auto-populate metrics.</p>
+                            <input type="file" id="ocr-file-input" style="display: none;" accept="image/*,application/pdf">
+                        </div>
+
+                        <!-- BMI Biometrics Calculator Row -->
+                        <div class="survey-row-3 bmi-calculator-row">
+                            <div class="field-item">
+                                <label for="height">Height (cm)</label>
+                                <input type="number" id="height" name="height" min="80" max="250" placeholder="Height" required>
+                            </div>
+                            <div class="field-item">
+                                <label for="weight">Weight (kg)</label>
+                                <input type="number" id="weight" name="weight" min="10" max="300" placeholder="Weight" required>
+                            </div>
+                            <div class="field-item bmi-result-field">
+                                <label>Biometric BMI Index</label>
+                                <div class="bmi-badge" id="bmi-display">
+                                    <span class="bmi-num">--</span>
+                                    <span class="bmi-status">Enter stats</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="step-nav-footer mt-4">
+                            <span></span>
+                            <button type="button" class="btn-nav btn-next" data-target="2">
+                                <span>Continue</span>
+                                <i data-lucide="arrow-right"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- STEP 2: Medical History, Genetics & Habits -->
+                    <div class="step-container hidden" id="step-2-container">
+                        <div class="step-header">
+                            <h3>Pre-Existing Conditions & Habits</h3>
+                            <p class="helper-text">Map chronic genetic factors, clinical comorbidities, and lifestyle habits.</p>
+                        </div>
+
+                        <!-- Comorbidities Checklist -->
+                        <div class="comorbidities-group mb-4">
+                            <label class="group-label">Diagnosed Medical History (Comorbidities)</label>
+                            <div class="comorbidities-grid">
+                                <label class="comorb-checkbox">
+                                    <input type="checkbox" name="history_conditions" value="hypertension" id="cond-hyper">
+                                    <span class="checkbox-box-label">Hypertension</span>
+                                </label>
+                                <label class="comorb-checkbox">
+                                    <input type="checkbox" name="history_conditions" value="hyperlipidemia" id="cond-lipids">
+                                    <span class="checkbox-box-label">Hyperlipidemia</span>
+                                </label>
+                                <label class="comorb-checkbox">
+                                    <input type="checkbox" name="history_conditions" value="obesity" id="cond-obese">
+                                    <span class="checkbox-box-label">Obesity Class</span>
+                                </label>
+                                <label class="comorb-checkbox">
+                                    <input type="checkbox" name="history_conditions" value="kidney_disease" id="cond-kidney">
+                                    <span class="checkbox-box-label">Chronic Kidney Disease</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="survey-row-2">
+                            <div class="field-item">
+                                <label>Family History of Diabetes</label>
+                                <div class="segmented-control">
+                                    <label class="segment">
+                                        <input type="radio" name="family_diabetes" value="None" checked>
+                                        <span class="segment-label">None</span>
+                                    </label>
+                                    <label class="segment">
+                                        <input type="radio" name="family_diabetes" value="One">
+                                        <span class="segment-label">1 Parent</span>
+                                    </label>
+                                    <label class="segment">
+                                        <input type="radio" name="family_diabetes" value="Both">
+                                        <span class="segment-label">Both Parents</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="field-item">
+                                <label>Family Heart Disease History</label>
+                                <div class="segmented-control">
+                                    <label class="segment">
+                                        <input type="radio" name="family_heart" value="None" checked>
+                                        <span class="segment-label">None</span>
+                                    </label>
+                                    <label class="segment">
+                                        <input type="radio" name="family_heart" value="One">
+                                        <span class="segment-label">1 Parent</span>
+                                    </label>
+                                    <label class="segment">
+                                        <input type="radio" name="family_heart" value="Both">
+                                        <span class="segment-label">Both Parents</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="apple-slider-card mt-3">
+                            <div class="slider-info">
+                                <label for="stress_level">Psychological Stress Index</label>
+                                <span class="slider-badge badge-orange" id="stress-txt">Moderate (5)</span>
+                            </div>
+                            <input type="range" id="stress_level" name="stress_level" min="1" max="10" step="1" value="5">
+                        </div>
+
+                        <div class="survey-row-3 mt-3">
+                            <div class="field-item">
+                                <label for="smoking">Tobacco Profile</label>
+                                <select id="smoking" name="smoking" required>
+                                    <option value="Never">Never Smoked</option>
+                                    <option value="Former">Former Smoker</option>
+                                    <option value="Current">Current Smoker</option>
+                                </select>
+                            </div>
+                            
+                            <div class="field-item">
+                                <label for="physical_activity">Physical Activity</label>
+                                <select id="physical_activity" name="physical_activity" required>
+                                    <option value="Low">Low / Sedentary</option>
+                                    <option value="Medium" selected>Moderate (2-3x/wk)</option>
+                                    <option value="High">Active (4x+/wk)</option>
+                                </select>
+                            </div>
+
+                            <div class="field-item">
+                                <label for="alcohol">Alcohol Intake</label>
+                                <select id="alcohol" name="alcohol" required>
+                                    <option value="None">None / Abstinent</option>
+                                    <option value="Moderate" selected>Moderate</option>
+                                    <option value="Heavy">Heavy Consumption</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="step-nav-footer mt-4">
+                            <button type="button" class="btn-nav btn-prev" data-target="1">
+                                <i data-lucide="arrow-left"></i>
+                                <span>Back</span>
+                            </button>
+                            <button type="button" class="btn-nav btn-next" data-target="3">
+                                <span>Continue</span>
+                                <i data-lucide="arrow-right"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- STEP 3: Symptoms & Extensive Lab Panels -->
+                    <div class="step-container hidden" id="step-3-container">
+                        <div class="step-header">
+                            <h3 id="lbl-step3-title">Symptoms Questionnaire & Laboratory Panels</h3>
+                            <p class="helper-text" id="lbl-step3-desc">Enter active symptoms and clinical bio-analysis values for precise risk reports.</p>
+                        </div>
+
+                        <!-- NLP & Voice Symptom Dictation Box -->
+                        <div class="field-item mb-4">
+                            <label for="nlp-symptoms-input" id="lbl-nlp-title">AI Symptom Voice/Text Analyzer</label>
+                            <div class="nlp-textarea-container">
+                                <textarea id="nlp-symptoms-input" class="nlp-textarea" placeholder="Describe symptoms in your own words, e.g., 'I have high chest pain, fever, and feel fatigued...'"></textarea>
+                                <div class="nlp-controls-row">
+                                    <button type="button" class="btn-nlp-action" id="btn-voice-input">
+                                        <i data-lucide="mic"></i>
+                                        <span id="voice-btn-lbl">Voice Input</span>
+                                    </button>
+                                    <button type="button" class="btn-nlp-action btn-nlp-primary" id="btn-nlp-analyze">
+                                        <i data-lucide="sparkles"></i>
+                                        <span id="lbl-nlp-analyze">Auto-Map Symptoms</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="apple-symptoms-grid">
+                            <label class="apple-checkbox">
+                                <input type="checkbox" name="symptoms" value="fever">
+                                <div class="check-box-tile">
+                                    <i data-lucide="thermometer" class="color-amber"></i>
+                                    <span>Fever</span>
+                                </div>
+                            </label>
+                            
+                            <label class="apple-checkbox">
+                                <input type="checkbox" name="symptoms" value="fatigue">
+                                <div class="check-box-tile">
+                                    <i data-lucide="battery-low" class="color-purple"></i>
+                                    <span>Fatigue</span>
+                                </div>
+                            </label>
+                            
+                            <label class="apple-checkbox">
+                                <input type="checkbox" name="symptoms" value="chest_pain">
+                                <div class="check-box-tile">
+                                    <i data-lucide="heart-pulse" class="color-red"></i>
+                                    <span>Chest Pain</span>
+                                </div>
+                            </label>
+
+                            <label class="apple-checkbox">
+                                <input type="checkbox" name="symptoms" value="dizziness">
+                                <div class="check-box-tile">
+                                    <i data-lucide="rotate-cw" class="color-blue"></i>
+                                    <span>Dizziness</span>
+                                </div>
+                            </label>
+
+                            <label class="apple-checkbox">
+                                <input type="checkbox" name="symptoms" value="dyspnea">
+                                <div class="check-box-tile">
+                                    <i data-lucide="wind" class="color-teal"></i>
+                                    <span>Short Breath (Dyspnea)</span>
+                                </div>
+                            </label>
+
+                            <label class="apple-checkbox">
+                                <input type="checkbox" name="symptoms" value="numbness">
+                                <div class="check-box-tile">
+                                    <i data-lucide="fingerprint" class="color-indigo"></i>
+                                    <span>Numbness / Tingling</span>
+                                </div>
+                            </label>
+
+                            <label class="apple-checkbox">
+                                <input type="checkbox" name="symptoms" value="polyuria">
+                                <div class="check-box-tile">
+                                    <i data-lucide="droplet-off" class="color-teal"></i>
+                                    <span>Frequent Urination</span>
+                                </div>
+                            </label>
+
+                            <label class="apple-checkbox">
+                                <input type="checkbox" name="symptoms" value="polydipsia">
+                                <div class="check-box-tile">
+                                    <i data-lucide="cup-soda" class="color-indigo"></i>
+                                    <span>Excessive Thirst</span>
+                                </div>
+                            </label>
+
+                            <label class="apple-checkbox">
+                                <input type="checkbox" name="symptoms" value="blurred_vision">
+                                <div class="check-box-tile">
+                                    <i data-lucide="eye-off" class="color-purple"></i>
+                                    <span>Blurred Vision</span>
+                                </div>
+                            </label>
+                        </div>
+
+                        <!-- Advanced Lab Values Accordion (Hospital-Grade) -->
+                        <div class="optional-labs-wrapper mt-4">
+                            <div class="labs-toggle-header" id="labs-accordion-header">
+                                <div class="flex-row">
+                                    <i data-lucide="file-spreadsheet" class="color-teal" style="width: 18px; height: 18px; margin-right: 6px;"></i>
+                                    <h4>Laboratory Bio-Analyzers <span class="optional-tag">Clinical overrides</span></h4>
+                                </div>
+                                <i data-lucide="chevron-down" id="labs-chevron" class="accordion-chevron"></i>
+                            </div>
+                            
+                            <div class="labs-inputs-content hidden" id="labs-inputs-panel">
+                                <p class="helper-text mt-1 mb-3">Input patient lab parameters. Entering numeric values overrides statistical averages.</p>
+                                
+                                <div class="survey-row-3">
+                                    <div class="field-item">
+                                        <div class="label-with-tip">
+                                            <label for="systolic">Systolic BP</label>
+                                            <span class="info-tip" title="Systolic BP (top number): Ideal is < 120 mmHg. Stage 1 Hypertension 130-139, Stage 2 >= 140.">i</span>
+                                        </div>
+                                        <div class="unit-input-box">
+                                            <input type="number" id="systolic" name="systolic" min="70" max="250" placeholder="e.g. 120">
+                                            <span class="unit-tag">mmHg</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="field-item">
+                                        <div class="label-with-tip">
+                                            <label for="diastolic">Diastolic BP</label>
+                                            <span class="info-tip" title="Diastolic BP (bottom number): Ideal is < 80 mmHg. Stage 1 Hypertension 80-89, Stage 2 >= 90.">i</span>
+                                        </div>
+                                        <div class="unit-input-box">
+                                            <input type="number" id="diastolic" name="diastolic" min="40" max="150" placeholder="e.g. 80">
+                                            <span class="unit-tag">mmHg</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="field-item">
+                                        <div class="label-with-tip">
+                                            <label for="glucose">Fasting Glucose</label>
+                                            <span class="info-tip" title="Fasting Glucose: Normal < 100 mg/dL, Prediabetes 100-125, Diabetes >= 126.">i</span>
+                                        </div>
+                                        <div class="unit-input-box">
+                                            <input type="number" id="glucose" name="glucose" min="50" max="500" placeholder="e.g. 96">
+                                            <span class="unit-tag">mg/dL</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="survey-row-3 mt-3">
+                                    <div class="field-item">
+                                        <div class="label-with-tip">
+                                            <label for="hba1c">HbA1c Level</label>
+                                            <span class="info-tip" title="HbA1c (%): Normal is < 5.7%. Prediabetes 5.7% to 6.4%. Diabetes >= 6.5%.">i</span>
+                                        </div>
+                                        <div class="unit-input-box">
+                                            <input type="number" id="hba1c" name="hba1c" min="3.0" max="18.0" step="0.1" placeholder="e.g. 5.5">
+                                            <span class="unit-tag">%</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="field-item">
+                                        <div class="label-with-tip">
+                                            <label for="cholesterol">Total Cholesterol</label>
+                                            <span class="info-tip" title="Total Cholesterol: Desirable is < 200 mg/dL. Borderline 200-239, High >= 240.">i</span>
+                                        </div>
+                                        <div class="unit-input-box">
+                                            <input type="number" id="cholesterol" name="cholesterol" min="80" max="500" placeholder="e.g. 190">
+                                            <span class="unit-tag">mg/dL</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="field-item">
+                                        <div class="label-with-tip">
+                                            <label for="ldl">LDL Cholesterol</label>
+                                            <span class="info-tip" title="LDL ('Bad') Cholesterol: Optimal is < 100 mg/dL. Near optimal 100-129, High >= 160.">i</span>
+                                        </div>
+                                        <div class="unit-input-box">
+                                            <input type="number" id="ldl" name="ldl" min="30" max="350" placeholder="e.g. 99">
+                                            <span class="unit-tag">mg/dL</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="survey-row-3 mt-3">
+                                    <div class="field-item">
+                                        <div class="label-with-tip">
+                                            <label for="hdl">HDL Cholesterol</label>
+                                            <span class="info-tip" title="HDL ('Good') Cholesterol: Ideal is > 40 mg/dL (men) or > 50 mg/dL (women). Low is < 40.">i</span>
+                                        </div>
+                                        <div class="unit-input-box">
+                                            <input type="number" id="hdl" name="hdl" min="15" max="150" placeholder="e.g. 52">
+                                            <span class="unit-tag">mg/dL</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="field-item">
+                                        <div class="label-with-tip">
+                                            <label for="triglycerides">Triglycerides</label>
+                                            <span class="info-tip" title="Triglycerides: Normal is < 150 mg/dL. Borderline 150-199, High >= 200.">i</span>
+                                        </div>
+                                        <div class="unit-input-box">
+                                            <input type="number" id="triglycerides" name="triglycerides" min="30" max="600" placeholder="e.g. 130">
+                                            <span class="unit-tag">mg/dL</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Habits spacer -->
+                                    <div class="field-item"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="apple-slider-card mt-4">
+                            <div class="slider-info">
+                                <label for="sleep_hours">Average Sleep Duration</label>
+                                <span class="slider-badge badge-blue" id="sleep-txt">7.0 hours</span>
+                            </div>
+                            <input type="range" id="sleep_hours" name="sleep_hours" min="4" max="10" step="0.5" value="7">
+                        </div>
+
+                        <div class="apple-slider-card mt-3">
+                            <div class="slider-info">
+                                <label for="diet_quality">Dietary Quality Index</label>
+                                <span class="slider-badge badge-green" id="diet-txt">Good Quality</span>
+                            </div>
+                            <input type="range" id="diet_quality" name="diet_quality" min="1" max="10" step="1" value="7">
+                        </div>
+
+                        <div class="step-nav-footer mt-4">
+                            <button type="button" class="btn-nav btn-prev" data-target="2">
+                                <i data-lucide="arrow-left"></i>
+                                <span>Back</span>
+                            </button>
+                            
+                            <button type="submit" class="apple-submit-btn-step" id="btn-submit">
+                                <span>Compile Clinical Report</span>
+                                <i data-lucide="activity"></i>
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </section>
+
+            <!-- Right Side: Beautiful Glass Diagnostic Reports Dashboard -->
+            <section class="dashboard-output-area">
+                <!-- Landing/Placeholder State -->
+                <div class="apple-card placeholder-panel no-print" id="results-placeholder">
+                    <div class="empty-state-visual">
+                        <div class="ring-system">
+                            <div class="outer-glow-ring"></div>
+                            <div class="inner-icon-ring">
+                                <i data-lucide="shield-check" class="glow-icon"></i>
+                            </div>
+                        </div>
+                        <h3>Awaiting Admission Profiles</h3>
+                        <p>Complete the patient registration tabs on the left and submit. Risk screening parameters will compute dynamically.</p>
+                        <div class="apple-pill">
+                            <i data-lucide="shield-alert" style="width: 12px; height: 12px; margin-right: 4px;"></i>
+                            <span>Hospital Sandbox Mode Active</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Animated Loading Grid -->
+                <div class="apple-card loading-panel no-print hidden" id="results-loading">
+                    <div class="loader-circle-stack">
+                        <div class="circular-skeleton pulse-skeleton-1"></div>
+                        <div class="circular-skeleton pulse-skeleton-2"></div>
+                        <i data-lucide="refresh-cw" class="spinning-icon"></i>
+                    </div>
+                    <h3>Consulting Diagnostic Models</h3>
+                    <p id="loading-stage">Mapping patient metadata...</p>
+                </div>
+
+                <!-- Predictions Dashboard Dashboard & Exportable Report -->
+                <div class="results-dashboard-wrapper hidden" id="results-dashboard">
+                    
+                    <!-- Print-Only Medical Header -->
+                    <div class="print-medical-header print-only">
+                        <div class="print-hospital-brand">
+                            <h2>HEALTHORACLE CLINICAL SUITE</h2>
+                            <p>Hospital Patient Pre-Screening & Risk Assessment Report</p>
+                        </div>
+                        <div class="print-meta-fields">
+                            <p><strong>Report Timestamp:</strong> <span id="print-date">--</span></p>
+                            <p><strong>Status:</strong> Clinical Pre-Screening Only</p>
+                        </div>
+                    </div>
+
+                    <!-- Patient Summary Card (Essential for Hospitals) -->
+                    <div class="apple-card patient-details-card">
+                        <div class="card-header-meta border-none mb-3">
+                            <div class="flex-row">
+                                <i data-lucide="user" class="color-blue" style="width: 18px; height: 18px; margin-right: 6px;"></i>
+                                <h4>Patient Admission Record Summary</h4>
+                            </div>
+                            <span class="patient-id-tag" id="display-mrn">MRN-2026-9812</span>
+                        </div>
+                        
+                        <div class="patient-info-table">
+                            <div class="p-info-row">
+                                <span class="p-info-lbl">Name:</span>
+                                <span class="p-info-val bold-text" id="display-name">John Doe</span>
+                            </div>
+                            <div class="p-info-row">
+                                <span class="p-info-lbl">Age / Sex:</span>
+                                <span class="p-info-val" id="display-age-sex">52 / Male</span>
+                            </div>
+                            <div class="p-info-row">
+                                <span class="p-info-lbl">BMI Index:</span>
+                                <span class="p-info-val bold-text" id="display-bmi">26.8 (Overweight)</span>
+                            </div>
+                            <div class="p-info-row">
+                                <span class="p-info-lbl">Active Symptoms:</span>
+                                <span class="p-info-val" id="display-symptoms">None documented</span>
+                            </div>
+                            <div class="p-info-row" style="border-top: 1px solid rgba(255, 255, 255, 0.05); padding-top: 8px; margin-top: 4px;">
+                                <span class="p-info-lbl">AI Provider Source:</span>
+                                <span class="p-info-val bold-text" id="display-ai-source" style="color: var(--system-blue);">Standard Ensemble (Local)</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Core Risk Results Grid -->
+                    <div class="results-layout-cards">
+                        <!-- Diabetes Risk Panel -->
+                        <div class="apple-card metric-glass-card" id="diabetes-card">
+                            <div class="card-header-meta">
+                                <h4 id="lbl-diabetes-card-title">Diabetes Risk Index</h4>
+                                <span class="badge-pill" id="diabetes-badge">Low</span>
+                            </div>
+                            
+                            <div class="circle-gauge-box">
+                                <svg class="progress-ring-svg" width="130" height="130">
+                                    <circle class="progress-bg-track" stroke="rgba(255,255,255,0.05)" stroke-width="8" fill="transparent" r="54" cx="65" cy="65"/>
+                                    <circle class="progress-bar-fill" id="diabetes-ring" stroke="var(--success)" stroke-width="8" stroke-linecap="round" fill="transparent" r="54" cx="65" cy="65"/>
+                                </svg>
+                                <div class="gauge-center-text">
+                                    <span class="pct-val" id="diabetes-prob">0%</span>
+                                    <span class="pct-lbl" id="lbl-diabetes-prob-label">Risk Probability</span>
+                                </div>
+                            </div>
+
+                            <div class="card-footer-metrics">
+                                <span id="lbl-diabetes-confidence">Model Confidence:</span>
+                                <span class="bold-text" id="diabetes-conf">80%</span>
+                            </div>
+                        </div>
+
+                        <!-- Heart Disease Risk Panel -->
+                        <div class="apple-card metric-glass-card" id="heart-card">
+                            <div class="card-header-meta">
+                                <h4 id="lbl-heart-card-title">Cardiovascular Risk Index</h4>
+                                <span class="badge-pill" id="heart-badge">Low</span>
+                            </div>
+                            
+                            <div class="circle-gauge-box">
+                                <svg class="progress-ring-svg" width="130" height="130">
+                                    <circle class="progress-bg-track" stroke="rgba(255,255,255,0.05)" stroke-width="8" fill="transparent" r="54" cx="65" cy="65"/>
+                                    <circle class="progress-bar-fill" id="heart-ring" stroke="var(--success)" stroke-width="8" stroke-linecap="round" fill="transparent" r="54" cx="65" cy="65"/>
+                                </svg>
+                                <div class="gauge-center-text">
+                                    <span class="pct-val" id="heart-prob">0%</span>
+                                    <span class="pct-lbl" id="lbl-heart-prob-label">Risk Probability</span>
+                                </div>
+                            </div>
+
+                            <div class="card-footer-metrics">
+                                <span id="lbl-heart-confidence">Model Confidence:</span>
+                                <span class="bold-text" id="heart-conf">80%</span>
+                            </div>
+                        </div>
+
+                        <!-- Kidney Disease Risk Panel -->
+                        <div class="apple-card metric-glass-card" id="kidney-card">
+                            <div class="card-header-meta">
+                                <h4 id="lbl-kidney-card-title">Kidney Disease Risk</h4>
+                                <span class="badge-pill" id="kidney-badge">Low</span>
+                            </div>
+                            
+                            <div class="circle-gauge-box">
+                                <svg class="progress-ring-svg" width="130" height="130">
+                                    <circle class="progress-bg-track" stroke="rgba(255,255,255,0.05)" stroke-width="8" fill="transparent" r="54" cx="65" cy="65"/>
+                                    <circle class="progress-bar-fill" id="kidney-ring" stroke="var(--success)" stroke-width="8" stroke-linecap="round" fill="transparent" r="54" cx="65" cy="65"/>
+                                </svg>
+                                <div class="gauge-center-text">
+                                    <span class="pct-val" id="kidney-prob">0%</span>
+                                    <span class="pct-lbl" id="lbl-kidney-prob-label">Risk Probability</span>
+                                </div>
+                            </div>
+
+                            <div class="card-footer-metrics">
+                                <span id="lbl-kidney-confidence">Model Confidence:</span>
+                                <span class="bold-text" id="kidney-conf">80%</span>
+                            </div>
+                        </div>
+
+                        <!-- Liver Disease Risk Panel -->
+                        <div class="apple-card metric-glass-card" id="liver-card">
+                            <div class="card-header-meta">
+                                <h4 id="lbl-liver-card-title">Liver Disease Risk</h4>
+                                <span class="badge-pill" id="liver-badge">Low</span>
+                            </div>
+                            
+                            <div class="circle-gauge-box">
+                                <svg class="progress-ring-svg" width="130" height="130">
+                                    <circle class="progress-bg-track" stroke="rgba(255,255,255,0.05)" stroke-width="8" fill="transparent" r="54" cx="65" cy="65"/>
+                                    <circle class="progress-bar-fill" id="liver-ring" stroke="var(--success)" stroke-width="8" stroke-linecap="round" fill="transparent" r="54" cx="65" cy="65"/>
+                                </svg>
+                                <div class="gauge-center-text">
+                                    <span class="pct-val" id="liver-prob">0%</span>
+                                    <span class="pct-lbl" id="lbl-liver-prob-label">Risk Probability</span>
+                                </div>
+                            </div>
+
+                            <div class="card-footer-metrics">
+                                <span id="lbl-liver-confidence">Model Confidence:</span>
+                                <span class="bold-text" id="liver-conf">80%</span>
+                            </div>
+                        </div>
+
+                        <!-- Stroke Risk Panel -->
+                        <div class="apple-card metric-glass-card" id="stroke-card">
+                            <div class="card-header-meta">
+                                <h4 id="lbl-stroke-card-title">Stroke Risk Index</h4>
+                                <span class="badge-pill" id="stroke-badge">Low</span>
+                            </div>
+                            
+                            <div class="circle-gauge-box">
+                                <svg class="progress-ring-svg" width="130" height="130">
+                                    <circle class="progress-bg-track" stroke="rgba(255,255,255,0.05)" stroke-width="8" fill="transparent" r="54" cx="65" cy="65"/>
+                                    <circle class="progress-bar-fill" id="stroke-ring" stroke="var(--success)" stroke-width="8" stroke-linecap="round" fill="transparent" r="54" cx="65" cy="65"/>
+                                </svg>
+                                <div class="gauge-center-text">
+                                    <span class="pct-val" id="stroke-prob">0%</span>
+                                    <span class="pct-lbl" id="lbl-stroke-prob-label">Risk Probability</span>
+                                </div>
+                            </div>
+
+                            <div class="card-footer-metrics">
+                                <span id="lbl-stroke-confidence">Model Confidence:</span>
+                                <span class="bold-text" id="stroke-conf">80%</span>
+                            </div>
+                        </div>
+
+                        <!-- Cancer Pre-Screen Risk Panel -->
+                        <div class="apple-card metric-glass-card" id="cancer-card">
+                            <div class="card-header-meta">
+                                <h4 id="lbl-cancer-card-title">Cancer Pre-Screen</h4>
+                                <span class="badge-pill" id="cancer-badge">Low</span>
+                            </div>
+                            
+                            <div class="circle-gauge-box">
+                                <svg class="progress-ring-svg" width="130" height="130">
+                                    <circle class="progress-bg-track" stroke="rgba(255,255,255,0.05)" stroke-width="8" fill="transparent" r="54" cx="65" cy="65"/>
+                                    <circle class="progress-bar-fill" id="cancer-ring" stroke="var(--success)" stroke-width="8" stroke-linecap="round" fill="transparent" r="54" cx="65" cy="65"/>
+                                </svg>
+                                <div class="gauge-center-text">
+                                    <span class="pct-val" id="cancer-prob">0%</span>
+                                    <span class="pct-lbl" id="lbl-cancer-prob-label">Risk Probability</span>
+                                </div>
+                            </div>
+
+                            <div class="card-footer-metrics">
+                                <span id="lbl-cancer-confidence">Model Confidence:</span>
+                                <span class="bold-text" id="cancer-conf">80%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Clinical Lab Markers Summary Table (Highly Precise for Hospitals) -->
+                    <div class="apple-card labs-table-card">
+                        <div class="card-header-meta">
+                            <div class="flex-row">
+                                <i data-lucide="beaker" class="color-teal" style="width: 18px; height: 18px; margin-right: 6px;"></i>
+                                <h4>Patient Laboratory Metrics</h4>
+                            </div>
+                            <span class="summary-meta-txt">Bio-Assay Summary</span>
+                        </div>
+                        
+                        <table class="clinical-labs-table">
+                            <thead>
+                                <tr>
+                                    <th>Lab Metric</th>
+                                    <th>Observed Value</th>
+                                    <th>Clinical Normal Range</th>
+                                    <th>Risk Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="labs-table-body">
+                                <!-- Lab rows dynamically inserted -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Risk Contributing Factors Breakdown Chart -->
+                    <div class="apple-card factors-card">
+                        <div class="card-header-meta">
+                            <div class="flex-row">
+                                <i data-lucide="sliders" class="color-purple" style="width: 18px; height: 18px; margin-right: 6px;"></i>
+                                <h4>Primary Risk Contributing Drivers</h4>
+                            </div>
+                            <span class="summary-meta-txt">Top Influence</span>
+                        </div>
+                        
+                        <div class="factors-chart-list" id="factors-container">
+                            <!-- Factors dynamically inserted -->
+                        </div>
+                    </div>
+
+                    <!-- Cohort Comparison (Comparative Risk Chart) -->
+                    <div class="apple-card cohort-card no-print">
+                        <div class="card-header-meta">
+                            <div class="flex-row">
+                                <i data-lucide="bar-chart-3" class="color-blue" style="width: 18px; height: 18px; margin-right: 6px;"></i>
+                                <h4 id="lbl-cohort-title">Comparative Cohort Risk Index</h4>
+                            </div>
+                            <span class="summary-meta-txt" id="lbl-cohort-subtitle">vs Base Average</span>
+                        </div>
+                        <div class="cohort-chart-wrapper">
+                            <!-- Diabetes Cohort -->
+                            <div class="cohort-row">
+                                <span class="cohort-label" id="lbl-cohort-diabetes">Diabetes</span>
+                                <div class="cohort-bars-container">
+                                    <div class="cohort-bar bar-user" id="cohort-user-diabetes" style="width: 0%">
+                                        <span class="bar-val-lbl">Your Risk: 0%</span>
+                                    </div>
+                                    <div class="cohort-bar bar-avg" style="width: 18%">
+                                        <span class="bar-val-lbl">Normal Average: 18%</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Heart Cohort -->
+                            <div class="cohort-row mt-3">
+                                <span class="cohort-label" id="lbl-cohort-cardiac">Cardiac</span>
+                                <div class="cohort-bars-container">
+                                    <div class="cohort-bar bar-user" id="cohort-user-heart" style="width: 0%">
+                                        <span class="bar-val-lbl">Your Risk: 0%</span>
+                                    </div>
+                                    <div class="cohort-bar bar-avg" style="width: 14%">
+                                        <span class="bar-val-lbl">Normal Average: 14%</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Kidney Cohort -->
+                            <div class="cohort-row mt-3">
+                                <span class="cohort-label" id="lbl-cohort-kidney">Kidney</span>
+                                <div class="cohort-bars-container">
+                                    <div class="cohort-bar bar-user" id="cohort-user-kidney" style="width: 0%">
+                                        <span class="bar-val-lbl">Your Risk: 0%</span>
+                                    </div>
+                                    <div class="cohort-bar bar-avg" style="width: 10%">
+                                        <span class="bar-val-lbl">Normal Average: 10%</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Liver Cohort -->
+                            <div class="cohort-row mt-3">
+                                <span class="cohort-label" id="lbl-cohort-liver">Liver</span>
+                                <div class="cohort-bars-container">
+                                    <div class="cohort-bar bar-user" id="cohort-user-liver" style="width: 0%">
+                                        <span class="bar-val-lbl">Your Risk: 0%</span>
+                                    </div>
+                                    <div class="cohort-bar bar-avg" style="width: 8%">
+                                        <span class="bar-val-lbl">Normal Average: 8%</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Stroke Cohort -->
+                            <div class="cohort-row mt-3">
+                                <span class="cohort-label" id="lbl-cohort-stroke">Stroke</span>
+                                <div class="cohort-bars-container">
+                                    <div class="cohort-bar bar-user" id="cohort-user-stroke" style="width: 0%">
+                                        <span class="bar-val-lbl">Your Risk: 0%</span>
+                                    </div>
+                                    <div class="cohort-bar bar-avg" style="width: 12%">
+                                        <span class="bar-val-lbl">Normal Average: 12%</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Cancer Cohort -->
+                            <div class="cohort-row mt-3">
+                                <span class="cohort-label" id="lbl-cohort-cancer">Cancer</span>
+                                <div class="cohort-bars-container">
+                                    <div class="cohort-bar bar-user" id="cohort-user-cancer" style="width: 0%">
+                                        <span class="bar-val-lbl">Your Risk: 0%</span>
+                                    </div>
+                                    <div class="cohort-bar bar-avg" style="width: 15%">
+                                        <span class="bar-val-lbl">Normal Average: 15%</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- What-If Risk Simulation Sandbox -->
+                    <div class="apple-card what-if-sandbox-card no-print">
+                        <div class="card-header-meta">
+                            <div class="flex-row">
+                                <i data-lucide="sliders" class="color-blue" style="width: 18px; height: 18px; margin-right: 6px;"></i>
+                                <h4 id="lbl-sandbox-title">What-If Risk Simulation Sandbox</h4>
+                            </div>
+                            <span class="summary-meta-txt" id="lbl-sandbox-subtitle">Interactive Simulator</span>
+                        </div>
+                        <p class="helper-text mt-1" id="lbl-sandbox-desc">Adjust lifestyle and clinical sliders to simulate how changes alter the risk profile in real time.</p>
+                        <div class="what-if-sliders-grid">
+                            <div class="sandbox-slider-item">
+                                <div class="sandbox-slider-meta">
+                                    <span id="lbl-sb-glucose">Fasting Glucose</span>
+                                    <span id="sb-val-glucose">100 mg/dL</span>
+                                </div>
+                                <input type="range" id="sb-glucose" min="50" max="300" value="100">
+                            </div>
+                            <div class="sandbox-slider-item">
+                                <div class="sandbox-slider-meta">
+                                    <span id="lbl-sb-hba1c">HbA1c Level</span>
+                                    <span id="sb-val-hba1c">5.5%</span>
+                                </div>
+                                <input type="range" id="sb-hba1c" min="3" max="15" step="0.1" value="5.5">
+                            </div>
+                            <div class="sandbox-slider-item">
+                                <div class="sandbox-slider-meta">
+                                    <span id="lbl-sb-systolic">Systolic Blood Pressure</span>
+                                    <span id="sb-val-systolic">120 mmHg</span>
+                                </div>
+                                <input type="range" id="sb-systolic" min="80" max="220" value="120">
+                            </div>
+                            <div class="sandbox-slider-item">
+                                <div class="sandbox-slider-meta">
+                                    <span id="lbl-sb-activity">Physical Activity Profile</span>
+                                    <span id="sb-val-activity">Moderate</span>
+                                </div>
+                                <input type="range" id="sb-activity" min="1" max="3" value="2">
+                            </div>
+                            <div class="sandbox-slider-item">
+                                <div class="sandbox-slider-meta">
+                                    <span id="lbl-sb-diet">Dietary Quality Index</span>
+                                    <span id="sb-val-diet">Good</span>
+                                </div>
+                                <input type="range" id="sb-diet" min="1" max="10" value="7">
+                            </div>
+                            <div class="sandbox-slider-item">
+                                <div class="sandbox-slider-meta">
+                                    <span id="lbl-sb-bmi">Body Mass Index (BMI)</span>
+                                    <span id="sb-val-bmi">25.0</span>
+                                </div>
+                                <input type="range" id="sb-bmi" min="15" max="45" value="25">
+                            </div>
+                        </div>
+                        <div class="sandbox-output-summary">
+                            <i data-lucide="info"></i>
+                            <p id="lbl-sandbox-summary-text">Simulation active. Modifying slider values instantly runs the client-side clinical model engine locally, allowing you to visually demonstrate the therapeutic benefits of health adjustments.</p>
+                        </div>
+                    </div>
+
+                    <!-- Wearable Telemetry Log Panel -->
+                    <div class="apple-card telemetry-logger-card no-print">
+                        <div class="card-header-meta">
+                            <div class="flex-row">
+                                <i data-lucide="watch" class="color-green" style="width: 18px; height: 18px; margin-right: 6px;"></i>
+                                <h4 id="lbl-telemetry-title">Smartwatch Sensor Telemetry Sync</h4>
+                            </div>
+                            <label class="switch-container">
+                                <input type="checkbox" id="chk-telemetry-sync">
+                                <span class="switch-slider"></span>
+                            </label>
+                        </div>
+                        <p class="helper-text mt-1" id="lbl-telemetry-desc">Syncs live heart rate, blood pressure, and step counts via WebSocket. Simulates real-time risk delta offsets.</p>
+                        
+                        <div class="telemetry-controls-panel hidden" id="telemetry-controls-panel">
+                            <div class="telemetry-control-row">
+                                <div class="control-meta">
+                                    <span id="lbl-watch-hr">Simulated Heart Rate</span>
+                                    <span id="watch-val-hr">72 bpm</span>
+                                </div>
+                                <input type="range" id="watch-hr" min="50" max="130" value="72">
+                            </div>
+                            <div class="telemetry-control-row">
+                                <div class="control-meta">
+                                    <span id="lbl-watch-steps">Simulated Daily Steps</span>
+                                    <span id="watch-val-steps">5,000 steps</span>
+                                </div>
+                                <input type="range" id="watch-steps" min="1000" max="15000" step="500" value="5000">
+                            </div>
+                            <div class="telemetry-control-row">
+                                <div class="control-meta">
+                                    <span id="lbl-watch-bp">Simulated Systolic BP</span>
+                                    <span id="watch-val-bp">120 mmHg</span>
+                                </div>
+                                <input type="range" id="watch-bp" min="90" max="180" value="120">
+                            </div>
+                        </div>
+
+                        <div class="telemetry-log-console" id="telemetry-console">
+                            <div class="telemetry-log-line">
+                                <span>[SYSTEM]</span>
+                                <span id="lbl-telemetry-console-init">Telemetry gateway offline. Click sync toggle to connect websocket.</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Patient Longitudinal Risk Timeline -->
+                    <div class="apple-card timeline-card">
+                        <div class="card-header-meta">
+                            <div class="flex-row">
+                                <i data-lucide="trending-up" class="color-purple" style="width: 18px; height: 18px; margin-right: 6px;"></i>
+                                <h4 id="lbl-timeline-title">Patient Longitudinal Risk Timeline</h4>
+                            </div>
+                            <span class="summary-meta-txt" id="lbl-timeline-subtitle">Historical Tracking</span>
+                        </div>
+                        <p class="helper-text mt-1" id="lbl-timeline-desc">Tracks the progression of patient screening entries chronologically.</p>
+                        <div class="timeline-points-row" id="timeline-points-container">
+                            <div class="timeline-progress-bar"></div>
+                            <!-- Dynamic history timeline dots -->
+                        </div>
+                    </div>
+
+                    <!-- Clinical History Journal & Saved Records -->
+                    <div class="apple-card history-journal-card no-print">
+                        <div class="card-header-meta border-none mb-3">
+                            <div class="flex-row">
+                                <i data-lucide="history" class="color-purple" style="width: 18px; height: 18px; margin-right: 6px;"></i>
+                                <h4 id="lbl-journal-title">Clinical Screening History Journal</h4>
+                            </div>
+                            <button type="button" class="apple-secondary-btn" id="btn-clear-journal" style="padding: 0.35rem 0.7rem; font-size: 0.75rem;">
+                                <i data-lucide="trash-2"></i>
+                                <span id="lbl-clear-journal">Clear Journal</span>
+                            </button>
+                        </div>
+                        <p class="helper-text mt-1" id="lbl-journal-desc">Locally stored patient pre-screenings. Reload any previous assessment back into the active diagnostic workspace.</p>
+                        
+                        <div class="journal-list" id="journal-list-container">
+                            <p class="helper-text text-center py-3" id="lbl-journal-empty">No previous assessments saved. Submit a patient profile to start logging history.</p>
+                        </div>
+                    </div>
+
+                    <!-- Model Reliability & Risk Calibration -->
+                    <div class="apple-card calibration-card">
+                        <div class="card-header-meta">
+                            <div class="flex-row">
+                                <i data-lucide="pie-chart" class="color-teal" style="width: 18px; height: 18px; margin-right: 6px;"></i>
+                                <h4 id="lbl-calibration-title">Model Reliability & Risk Calibration</h4>
+                            </div>
+                            <span class="summary-meta-txt" id="lbl-calibration-subtitle">Expected vs Observed</span>
+                        </div>
+                        <p class="helper-text mt-1" id="lbl-calibration-desc">Calibration curves mapping computed risk against actual clinical cohort outcomes.</p>
+                        <div class="calibration-diagram-box" id="calibration-box">
+                            <div class="calibration-graph-line"></div>
+                            <!-- Dynamic columns will be rendered by JS -->
+                        </div>
+                    </div>
+
+                    <!-- AI Health Coach Guidelines -->
+                    <div class="apple-card coach-card">
+                        <div class="card-header-meta">
+                            <div class="flex-row">
+                                <i data-lucide="smile" class="color-green" style="width: 18px; height: 18px; margin-right: 6px;"></i>
+                                <h4 id="lbl-coach-title">AI Health Coach Guidelines</h4>
+                            </div>
+                            <span class="summary-meta-txt" id="lbl-coach-subtitle">Adaptive Goals</span>
+                        </div>
+                        <p class="helper-text mt-1" id="lbl-coach-desc">Dynamic lifestyle goals customized based on the highest computed risk factors.</p>
+                        <ul class="coach-goals-list" id="coach-goals-container">
+                            <!-- Dynamic goals will be rendered by JS -->
+                        </ul>
+                    </div>
+
+                    <!-- Clinical Wellness & Lifestyle Prescription (Diet, Exercise, Sleep) -->
+                    <div class="apple-card wellness-prescription-card">
+                        <div class="card-header-meta border-none mb-3">
+                            <div class="flex-row">
+                                <i data-lucide="heart" class="color-red" style="width: 20px; height: 20px; margin-right: 6px;"></i>
+                                <h4 id="lbl-wellness-plan-title">Clinical Wellness & Prescriptive Lifestyle Plan</h4>
+                            </div>
+                            <span class="summary-meta-txt" id="lbl-wellness-plan-subtitle">Therapeutic Interventions</span>
+                        </div>
+                        <p class="helper-text mb-3" id="lbl-wellness-plan-desc">Targeted nutritional regimens, physical training programs, and sleep hygiene rules to mitigate your calculated risk vectors.</p>
+                        
+                        <div class="wellness-sections-grid">
+                            <!-- Diet Plan Column -->
+                            <div class="wellness-section-col">
+                                <div class="col-title-row">
+                                    <i data-lucide="apple" class="color-amber"></i>
+                                    <h5 id="lbl-diet-plan-header">Dietary Prescription</h5>
+                                </div>
+                                <div class="wellness-list-box">
+                                    <div class="food-group">
+                                        <h6 class="food-group-title" id="lbl-diet-eat">Foods to Consume</h6>
+                                        <ul id="diet-eat-list" class="wellness-plan-list">
+                                            <!-- Dynamic items -->
+                                        </ul>
+                                    </div>
+                                    <div class="food-group mt-3">
+                                        <h6 class="food-group-title food-avoid-title" id="lbl-diet-avoid">Foods to Limit/Avoid</h6>
+                                        <ul id="diet-avoid-list" class="wellness-plan-list avoid-list">
+                                            <!-- Dynamic items -->
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Workout Plan Column -->
+                            <div class="wellness-section-col">
+                                <div class="col-title-row">
+                                    <i data-lucide="activity" class="color-blue"></i>
+                                    <h5 id="lbl-workout-plan-header">Physical Exercise Protocol</h5>
+                                </div>
+                                <div class="wellness-list-box">
+                                    <ul id="workout-list" class="wellness-plan-list">
+                                        <!-- Dynamic items -->
+                                    </ul>
+                                </div>
+                            </div>
+                            
+                            <!-- Sleep & Recovery Column -->
+                            <div class="wellness-section-col">
+                                <div class="col-title-row">
+                                    <i data-lucide="moon" class="color-purple"></i>
+                                    <h5 id="lbl-sleep-plan-header">Sleep & Recovery Hygiene</h5>
+                                </div>
+                                <div class="wellness-list-box">
+                                    <ul id="sleep-list" class="wellness-plan-list">
+                                        <!-- Dynamic items -->
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Action Guidelines Panel -->
+                    <div class="apple-card guidelines-card">
+                        <div class="card-header-meta border-none mb-3">
+                            <div class="flex-row">
+                                <i data-lucide="shield-check" class="color-teal" style="width: 18px; height: 18px; margin-right: 6px;"></i>
+                                <h4>Preventive Interventions & Clinical Action Plans</h4>
+                            </div>
+                        </div>
+                        
+                        <ul class="guidelines-list" id="recommendations-container">
+                            <!-- Dynamic recommendations -->
+                        </ul>
+
+                        <div class="clinical-urgency-banner" id="clinical-urgency">
+                            <i data-lucide="alert-circle" id="urgency-icon"></i>
+                            <div>
+                                <h5 id="urgency-headline">Clinical Triage Assessment</h5>
+                                <p id="urgency-desc">Evaluating diagnostics...</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Print Sign-Off (Print-Only) -->
+                    <div class="print-signoff-block print-only">
+                        <div class="signature-line">
+                            <p>________________________________________</p>
+                            <p>Attending Physician / Clinician Signature</p>
+                        </div>
+                        <div class="signature-line">
+                            <p>____________________</p>
+                            <p>Date</p>
+                        </div>
+                    </div>
+
+                    <!-- Reset and Print Actions -->
+                    <div class="dashboard-actions-row no-print">
+                        <button class="apple-secondary-btn" id="btn-print-report">
+                            <i data-lucide="printer"></i>
+                            <span>Print Clinical Report</span>
+                        </button>
+                        <button class="apple-secondary-btn" id="btn-reset">
+                            <i data-lucide="refresh-cw"></i>
+                            <span>Re-evaluate New Profile</span>
+                        </button>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Fixed Footer with Medical Disclaimer (Constitutional IV Requirement) -->
+        <footer class="apple-footer-disclaimer no-print">
+            <div class="disclaimer-body">
+                <i data-lucide="alert-triangle" class="disclaimer-alert-icon"></i>
+                <p><strong>Clinical Disclaimer:</strong> HealthOracle AI is a screening tool created for awareness and education purposes. It is NOT a substitute for professional diagnostic services, physician consultation, or therapy. The predictions displayed here are computed based on statistical associations and lifestyle models, not comprehensive biological assays. If you are experiencing chest pain, severe breathlessness, or acute symptoms, please contact emergency health services immediately.</p>
+            </div>
+            <div class="footer-meta">
+                <span>&copy; 2026 HealthOracle AI Project. Secured Sandbox Environment.</span>
+            </div>
+        </footer>
+    </div>
+
+    <!-- AI Settings Modal (BYOK & Local Inference) -->
+    <div class="apple-modal-overlay hidden" id="ai-settings-modal">
+        <div class="apple-modal-content glass-card">
+            <div class="modal-header">
+                <h3><i data-lucide="settings"></i> Configure AI Engine</h3>
+                <button type="button" class="btn-close-modal" id="btn-close-settings" aria-label="Close Settings">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p class="helper-text mb-4">Set up your AI provider (Cloud Gemini, Local Ollama, or Custom OpenAI-compatible endpoints) and BYOK credentials. These configurations are stored locally in your browser.</p>
+                
+                <div class="field-item mb-3">
+                    <label for="ai-provider">AI Provider</label>
+                    <select id="ai-provider" class="survey-select">
+                        <option value="gemini">Google Gemini 2.5 Flash (Cloud)</option>
+                        <option value="ollama">Local Ollama Inference</option>
+                        <option value="openai">Custom OpenAI-Compatible Endpoint</option>
+                    </select>
+                    <div id="ai-provider-status" class="helper-text mt-1 hidden" style="font-weight: 500;"></div>
+                </div>
+
+                <div class="field-item mb-3">
+                    <label for="ai-endpoint">Endpoint URL</label>
+                    <input type="url" id="ai-endpoint" class="survey-select" style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; color: var(--text-color); padding: 0.6rem; width: 100%; box-sizing: border-box;" placeholder="e.g. http://localhost:11434/v1/chat/completions">
+                </div>
+
+                <div class="field-item mb-3">
+                    <label for="ai-key">API Key / Token (BYOK)</label>
+                    <input type="password" id="ai-key" class="survey-select" style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; color: var(--text-color); padding: 0.6rem; width: 100%; box-sizing: border-box;" placeholder="Enter your private API key / token">
+                </div>
+
+                <div class="field-item mb-3">
+                    <label for="ai-model">Model Name</label>
+                    <input type="text" id="ai-model" class="survey-select" style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; color: var(--text-color); padding: 0.6rem; width: 100%; box-sizing: border-box;" placeholder="e.g. llama3 or gemini-2.5-flash">
+                </div>
+            </div>
+            <div class="modal-footer" style="display: flex; justify-content: space-between; gap: 10px; margin-top: 1.5rem;">
+                <button type="button" class="apple-secondary-btn" id="btn-reset-ai-settings">Reset to Defaults</button>
+                <button type="button" class="apple-primary-btn" id="btn-save-ai-settings">Save Configurations</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Localization Package -->
+    <script src="l10n-package.js"></script>
+    <!-- Script File -->
+    <script src="script.js"></script>
+    <script>
+        // Initialize Lucide Icons
+        lucide.createIcons();
+    </script>
+</body>
+</html>

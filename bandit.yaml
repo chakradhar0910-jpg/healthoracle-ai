@@ -1,0 +1,7 @@
+# Bandit Configuration File
+targets:
+  - "backend"
+exclude_dirs:
+  - "tests"
+  - ".git"
+  - "__pycache__"
