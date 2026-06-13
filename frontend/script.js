@@ -643,7 +643,8 @@ document.addEventListener("DOMContentLoaded", () => {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 1200);
 
-            const response = await fetch(`${BACKEND_URL}/ai/health`, {
+            // First check the actual backend
+            const response = await fetch(`${BACKEND_URL}/ai/health?t=${new Date().getTime()}`, {
                 method: "GET",
                 signal: controller.signal
             });
@@ -652,14 +653,32 @@ document.addEventListener("DOMContentLoaded", () => {
             if (response.ok) {
                 const health = await response.json();
                 isServerOnline = true;
-                updateStatusBadge("ready", health.ollama_running);
+                
+                // If backend says Ollama is off, double check if it's running locally on the user's browser-side
+                if (!health.ollama_running) {
+                    const localOllama = await checkLocalOllamaDirect();
+                    updateStatusBadge("ready", localOllama);
+                } else {
+                    updateStatusBadge("ready", true);
+                }
             } else {
                 isServerOnline = false;
                 updateStatusBadge("warm", false);
             }
         } catch (e) {
+            // Even if backend is totally offline, we might still have local Ollama
+            const localOllama = await checkLocalOllamaDirect();
             isServerOnline = false;
-            updateStatusBadge("warm", false);
+            updateStatusBadge("warm", localOllama);
+        }
+    }
+
+    async function checkLocalOllamaDirect() {
+        try {
+            const resp = await fetch("http://127.0.0.1:11434/api/tags", { mode: "no-cors" });
+            return true; // If we get any response, it's alive
+        } catch(e) {
+            return false;
         }
     }
 
@@ -779,17 +798,50 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (isServerOnline) {
             try {
-                const response = await fetch(`${BACKEND_URL}/predict`, {
-                    method: "POST",
-                    headers: { 
-                        "Content-Type": "application/json",
-                        ...getAIHeaders()
-                    },
-                    body: JSON.stringify(payload)
-                });
-                if (response.ok) {
-                    results = await response.json();
+                // If Ollama is selected, we might want to do it locally from the browser
+                // if the backend is a remote cloud deployment.
+                const aiConfig = getAIHeaders();
+                const isOllamaSelected = aiConfig["X-AI-Provider"] === "ollama";
+                const isRemoteBackend = !BACKEND_URL.includes("localhost") && !BACKEND_URL.includes("127.0.0.1");
+
+                let response;
+                if (isOllamaSelected && isRemoteBackend) {
+                    console.log("🌐 Remote deployment detected. Routing Ollama inference to local browser agent...");
+                    // 1. Get ML scores from backend first (tell backend to skip LLM)
+                    const mlHeaders = { ...aiConfig };
+                    mlHeaders["X-AI-Provider"] = "none"; 
+
+                    response = await fetch(`${BACKEND_URL}/predict`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json", ...mlHeaders },
+                        body: JSON.stringify(payload)
+                    });
+                    
+                    if (response.ok) {
+                        results = await response.json();
+                        // 2. Perform Ollama inference locally from browser
+                        const localRecs = await generateOllamaRecommendationsLocal(payload, results);
+                        if (localRecs) {
+                            results.recommendations = localRecs;
+                            usedFallback = false;
+                        }
+                    }
                 } else {
+                    // Standard routing via backend
+                    response = await fetch(`${BACKEND_URL}/predict`, {
+                        method: "POST",
+                        headers: { 
+                            "Content-Type": "application/json",
+                            ...aiConfig
+                        },
+                        body: JSON.stringify(payload)
+                    });
+                    if (response.ok) {
+                        results = await response.json();
+                    }
+                }
+
+                if (!results && response && !response.ok) {
                     console.warn("⚠️ AI Response not OK, using local clinical fallback.");
                     results = compileLocalClinicalInference(payload);
                     usedFallback = true;
@@ -810,6 +862,50 @@ document.addEventListener("DOMContentLoaded", () => {
 
         renderResultsDashboard(results, payload, usedFallback);
     });
+
+    async function generateOllamaRecommendationsLocal(payload, mlResults) {
+        try {
+            const config = JSON.parse(localStorage.getItem("healthoracle_ai_config") || "{}");
+            const endpoint = "http://127.0.0.1:11434/api/generate";
+            const model = config.model || "llama3.1:8b";
+            
+            const prompt = `As a Clinical AI, analyze this patient data:
+Name: ${payload.patientName}, Age: ${payload.age}, Sex: ${payload.gender}
+ML Risk Scores: 
+- Diabetes: ${mlResults.predictions.diabetes.probability}%
+- Cardiovascular: ${mlResults.predictions.heart_disease.probability}%
+- Stroke: ${mlResults.predictions.stroke_risk.probability}%
+Symptoms: ${payload.symptoms.join(", ")}
+Vitals: BP ${payload.systolic}/${payload.diastolic}, Glucose ${payload.glucose}, HbA1c ${payload.hba1c}
+
+Provide 3-5 specific, medical-grade lifestyle recommendations. Use a professional tone. Return only a JSON array of strings.`;
+
+            const response = await fetch(endpoint, {
+                method: "POST",
+                body: JSON.stringify({
+                    model: model,
+                    prompt: prompt,
+                    stream: false,
+                    format: "json"
+                })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                const text = data.response;
+                try {
+                    // Try to parse JSON array from response
+                    const parsed = JSON.parse(text);
+                    return Array.isArray(parsed) ? parsed : (parsed.recommendations || [text]);
+                } catch(e) {
+                    return [text];
+                }
+            }
+        } catch (e) {
+            console.error("Local Ollama inference failed:", e);
+        }
+        return null;
+    }
 
     // 8. Hospital-Grade Clinical Inference Engine (6 Diseases + SHAP + Genetic Multipliers)
     function compileLocalClinicalInference(data) {
@@ -2820,9 +2916,12 @@ document.addEventListener("DOMContentLoaded", () => {
             btnText.textContent = "Checking...";
             
             try {
-                const response = await fetch(`${BACKEND_URL}/ai/health`);
+                // Add cache-busting timestamp to prevent stale responses
+                const response = await fetch(`${BACKEND_URL}/ai/health?t=${new Date().getTime()}`);
                 if (response.ok) {
                     const health = await response.json();
+                    console.log("🔍 AI Health check response:", health);
+                    
                     if (health.ollama_running) {
                         // Switch to Ollama
                         const config = JSON.parse(localStorage.getItem("healthoracle_ai_config") || "{}");
@@ -2886,9 +2985,12 @@ document.addEventListener("DOMContentLoaded", () => {
             aiProviderStatus.textContent = "Checking Local Ollama status...";
             
             try {
-                const response = await fetch(`${BACKEND_URL}/ai/health`);
+                // Add cache-busting timestamp to prevent stale responses
+                const response = await fetch(`${BACKEND_URL}/ai/health?t=${new Date().getTime()}`);
                 if (response.ok) {
                     const health = await response.json();
+                    console.log("🔍 AI Health check response:", health);
+                    
                     if (health.ollama_running) {
                         // Use llama3.1:8b as the default check
                         const targetModel = inputAiModel.value.trim() || "llama3.1:8b";

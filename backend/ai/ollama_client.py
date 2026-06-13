@@ -15,12 +15,28 @@ log = logging.getLogger("healthoracle.ai.ollama")
 
 def is_ollama_running(endpoint: str = None) -> bool:
     """Pings the Ollama server to check availability."""
-    url = (endpoint or OLLAMA_ENDPOINT).replace("/api/generate", "/")
-    try:
-        resp = requests.get(url, timeout=1.5)
-        return resp.status_code == 200
-    except:
-        return False
+    base_url = (endpoint or OLLAMA_ENDPOINT).replace("/api/generate", "/")
+    
+    # Try the provided/configured URL first
+    urls_to_try = [base_url]
+    
+    # If using 127.0.0.1, also try localhost as backup (some Windows setups vary)
+    if "127.0.0.1" in base_url:
+        urls_to_try.append(base_url.replace("127.0.0.1", "localhost"))
+    elif "localhost" in base_url:
+        urls_to_try.append(base_url.replace("localhost", "127.0.0.1"))
+
+    for url in urls_to_try:
+        try:
+            log.debug(f"🔍 Heartbeat ping to Ollama: {url}")
+            resp = requests.get(url, timeout=3.0) # Increased timeout to 3s
+            if resp.status_code == 200:
+                return True
+        except requests.exceptions.RequestException as e:
+            log.debug(f"⚠️ Ollama heartbeat failed for {url}: {e}")
+            continue
+    
+    return False
 
 def try_start_ollama():
     """Attempts to launch the Ollama service if it's not running."""

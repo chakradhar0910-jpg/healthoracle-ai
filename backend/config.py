@@ -18,7 +18,7 @@ load_dotenv(WORKSPACE_DIR / ".env")
 # ── API Server Settings ───────────────────────────────────────────────────
 API_HOST = os.getenv("HEALTHORACLE_API_HOST", "127.0.0.1")
 API_PORT = int(os.getenv("HEALTHORACLE_API_PORT", "8000"))
-DEBUG = os.getenv("HEALTHORACLE_DEBUG", "false").lower() in ("true", "1")
+DEBUG = True # Forced debug mode for troubleshooting
 
 # ── CORS Settings ─────────────────────────────────────────────────────────
 # Split by commas to support multiple origins (e.g. http://localhost:3000,http://localhost:5173)
@@ -33,7 +33,7 @@ CORS_ALLOW_CREDENTIALS = os.getenv("HEALTHORACLE_CORS_ALLOW_CREDENTIALS", "false
 )
 
 # ── Logging Settings ──────────────────────────────────────────────────────
-LOG_LEVEL = os.getenv("HEALTHORACLE_LOG_LEVEL", "INFO")
+LOG_LEVEL = "DEBUG"
 LOG_DIR = WORKSPACE_DIR / "logs"
 LOG_DIR.mkdir(exist_ok=True)
 LOG_FILE_PATH = LOG_DIR / "app.log"
