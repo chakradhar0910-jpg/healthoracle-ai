@@ -675,11 +675,20 @@ document.addEventListener("DOMContentLoaded", () => {
 
     async function checkLocalOllamaDirect() {
         try {
-            const resp = await fetch("http://127.0.0.1:11434/api/tags", { mode: "no-cors" });
-            return true; // If we get any response, it's alive
+            // Using /api/tags to get the list of models as a health check
+            const resp = await fetch("http://127.0.0.1:11434/api/tags");
+            if (resp.ok) {
+                const data = await resp.json();
+                return { running: true, models: data.models.map(m => m.name) };
+            }
         } catch(e) {
-            return false;
+            // Fallback for CORS blocks - if it throws an error but it's a TypeError, it might still be there
+            try {
+                const resp = await fetch("http://127.0.0.1:11434/api/tags", { mode: "no-cors" });
+                return { running: true, models: [] }; 
+            } catch(e2) {}
         }
+        return { running: false, models: [] };
     }
 
     function updateStatusBadge(state, ollamaRunning = false) {
@@ -691,12 +700,12 @@ document.addEventListener("DOMContentLoaded", () => {
             lbl.textContent = ollamaRunning ? "AI Server (Local Ollama Online)" : "AI Server Connected";
         } else {
             dot.className = "status-indicator-dot dot-warm";
-            lbl.textContent = "Offline Preview Mode";
+            lbl.textContent = ollamaRunning ? "Local-Only Mode (Ollama Online)" : "Offline Preview Mode";
         }
     }
 
     checkServerStatus();
-    setInterval(checkServerStatus, 10000);
+    setInterval(checkServerStatus, 15000);
 
     // 7. Form Submit & Diagnostics Compiler
     healthForm.addEventListener("submit", async (e) => {
@@ -762,6 +771,8 @@ document.addEventListener("DOMContentLoaded", () => {
         const weight = parseFloat(weightInput.value);
         const familyDiabetes = document.querySelector('input[name="family_diabetes"]:checked').value;
         const familyHeart = document.querySelector('input[name="family_heart"]:checked').value;
+        const familyKidney = document.querySelector('input[name="family_kidney"]:checked')?.value || "None";
+        const familyCancer = document.querySelector('input[name="family_cancer"]:checked')?.value || "None";
         const sleepHours = parseFloat(sleepInput.value);
         const dietQuality = parseInt(dietInput.value);
         const stressLevel = parseInt(stressInput.value);
@@ -783,6 +794,7 @@ document.addEventListener("DOMContentLoaded", () => {
             patientName: nameInput.value,
             mrn: mrnInput.value,
             age, gender, bp, height, weight, familyDiabetes, familyHeart,
+            familyKidney, familyCancer,
             sleepHours, dietQuality, stressLevel, smoking, physicalActivity, alcohol,
             systolic, diastolic, glucose, hba1c, cholesterol, ldl, hdl, triglycerides,
             symptoms: activeSymptoms,
@@ -796,18 +808,16 @@ document.addEventListener("DOMContentLoaded", () => {
         let results = null;
         let usedFallback = false;
 
-        if (isServerOnline) {
-            try {
-                // If Ollama is selected, we might want to do it locally from the browser
-                // if the backend is a remote cloud deployment.
-                const aiConfig = getAIHeaders();
-                const isOllamaSelected = aiConfig["X-AI-Provider"] === "ollama";
-                const isRemoteBackend = !BACKEND_URL.includes("localhost") && !BACKEND_URL.includes("127.0.0.1");
+        try {
+            const aiConfig = getAIHeaders();
+            const isOllamaSelected = aiConfig["X-AI-Provider"] === "ollama";
+            const isRemoteBackend = !BACKEND_URL.includes("localhost") && !BACKEND_URL.includes("127.0.0.1");
 
+            if (isServerOnline) {
                 let response;
                 if (isOllamaSelected && isRemoteBackend) {
                     console.log("🌐 Remote deployment detected. Routing Ollama inference to local browser agent...");
-                    // 1. Get ML scores from backend first (tell backend to skip LLM)
+                    // 1. Get ML scores from backend first
                     const mlHeaders = { ...aiConfig };
                     mlHeaders["X-AI-Provider"] = "none"; 
 
@@ -830,29 +840,29 @@ document.addEventListener("DOMContentLoaded", () => {
                     // Standard routing via backend
                     response = await fetch(`${BACKEND_URL}/predict`, {
                         method: "POST",
-                        headers: { 
-                            "Content-Type": "application/json",
-                            ...aiConfig
-                        },
+                        headers: { "Content-Type": "application/json", ...aiConfig },
                         body: JSON.stringify(payload)
                     });
                     if (response.ok) {
                         results = await response.json();
                     }
                 }
+            } else if (isOllamaSelected) {
+                // Backend offline but Ollama might be local
+                console.log("ℹ️ Server offline, attempting direct Local Ollama inference...");
+                results = compileLocalClinicalInference(payload);
+                const localRecs = await generateOllamaRecommendationsLocal(payload, results);
+                if (localRecs) results.recommendations = localRecs;
+                usedFallback = false; // We have real AI recs!
+            }
 
-                if (!results && response && !response.ok) {
-                    console.warn("⚠️ AI Response not OK, using local clinical fallback.");
-                    results = compileLocalClinicalInference(payload);
-                    usedFallback = true;
-                }
-            } catch (err) {
-                console.error("⚠️ AI Communication error, using local clinical fallback.", err);
+            if (!results) {
+                console.warn("⚠️ AI Response not OK, using local clinical fallback.");
                 results = compileLocalClinicalInference(payload);
                 usedFallback = true;
             }
-        } else {
-            console.log("ℹ️ Server offline, using local clinical fallback.");
+        } catch (err) {
+            console.error("⚠️ AI Communication error, using local clinical fallback.", err);
             results = compileLocalClinicalInference(payload);
             usedFallback = true;
         }
@@ -866,7 +876,7 @@ document.addEventListener("DOMContentLoaded", () => {
     async function generateOllamaRecommendationsLocal(payload, mlResults) {
         try {
             const config = JSON.parse(localStorage.getItem("healthoracle_ai_config") || "{}");
-            const endpoint = "http://127.0.0.1:11434/api/generate";
+            const endpoint = config.endpoint || "http://127.0.0.1:11434/api/chat";
             const model = config.model || "llama3.1:8b";
             
             const prompt = `As a Clinical AI, analyze this patient data:
@@ -878,23 +888,35 @@ ML Risk Scores:
 Symptoms: ${payload.symptoms.join(", ")}
 Vitals: BP ${payload.systolic}/${payload.diastolic}, Glucose ${payload.glucose}, HbA1c ${payload.hba1c}
 
-Provide 3-5 specific, medical-grade lifestyle recommendations. Use a professional tone. Return only a JSON array of strings.`;
+Provide 3-5 specific, medical-grade lifestyle recommendations. Return only a JSON array of strings.`;
 
-            const response = await fetch(endpoint, {
-                method: "POST",
-                body: JSON.stringify({
+            let body = {};
+            if (endpoint.endsWith("/chat")) {
+                body = {
+                    model: model,
+                    messages: [{ role: "user", content: prompt }],
+                    stream: false,
+                    format: "json"
+                };
+            } else {
+                body = {
                     model: model,
                     prompt: prompt,
                     stream: false,
                     format: "json"
-                })
+                };
+            }
+
+            const response = await fetch(endpoint, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(body)
             });
 
             if (response.ok) {
                 const data = await response.json();
-                const text = data.response;
+                const text = endpoint.endsWith("/chat") ? data.message.content : data.response;
                 try {
-                    // Try to parse JSON array from response
                     const parsed = JSON.parse(text);
                     return Array.isArray(parsed) ? parsed : (parsed.recommendations || [text]);
                 } catch(e) {

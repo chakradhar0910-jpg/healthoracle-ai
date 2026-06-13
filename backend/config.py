@@ -62,5 +62,5 @@ GEMINI_API_KEY = os.getenv("HEALTHORACLE_GEMINI_API_KEY", "")
 # Local AI / Ollama Settings
 USE_OLLAMA = os.getenv("USE_OLLAMA", "false").lower() in ("true", "1")
 DEFAULT_AI_PROVIDER = "ollama" if USE_OLLAMA else os.getenv("HEALTHORACLE_DEFAULT_AI_PROVIDER", "gemini")
-OLLAMA_ENDPOINT = os.getenv("HEALTHORACLE_OLLAMA_ENDPOINT", "http://127.0.0.1:11434/api/generate")
+OLLAMA_ENDPOINT = os.getenv("HEALTHORACLE_OLLAMA_ENDPOINT", "http://127.0.0.1:11434/api/chat")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL") or os.getenv("HEALTHORACLE_OLLAMA_MODEL", "llama3.1:8b")

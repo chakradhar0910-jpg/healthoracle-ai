@@ -108,20 +108,35 @@ def call_ollama(prompt: str, endpoint: str = None, model: str = None, is_auto: b
     
     tag = "[AUTO-LOCAL] " if is_auto else "[OLLAMA] "
     
-    payload = {
-        "model": model_name,
-        "prompt": prompt,
-        "stream": False
-    }
-    
+    # Route request based on endpoint type
+    if url.endswith("/chat"):
+        payload = {
+            "model": model_name,
+            "messages": [{"role": "user", "content": prompt}],
+            "stream": False,
+            "options": {"temperature": 0.3, "top_p": 0.9},
+        }
+    else:
+        payload = {
+            "model": model_name,
+            "prompt": prompt,
+            "stream": False,
+            "options": {"temperature": 0.3, "top_p": 0.9},
+        }
+
     try:
         log.info(f"📡 Routing to: Ollama ({model_name})")
         log.info(f"📡 Endpoint: {url}")
-        
-        resp = requests.post(url, json=payload, timeout=120)
+
+        resp = requests.post(url, json=payload, timeout=60.0)
         resp.raise_for_status()
         data = resp.json()
-        res_text = str(data.get("response", "")).strip()
+
+        if url.endswith("/chat"):
+            res_text = str(data.get("message", {}).get("content", "")).strip()
+        else:
+            res_text = str(data.get("response", "")).strip()
+
         return f"{tag}{res_text}"
     except Exception as e:
         log.error(f"❌ Ollama request failed: {e}")
