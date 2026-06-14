@@ -2,6 +2,37 @@
 
 document.addEventListener("DOMContentLoaded", () => {
     const BACKEND_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" || window.location.protocol === "file:" ? "http://127.0.0.1:8000" : "https://healthoracle-ai.onrender.com";
+
+    // Theme logic
+    const btnThemeToggle = document.getElementById("btn-theme-toggle");
+    const themeIconSun = document.getElementById("theme-icon-sun");
+    const themeIconMoon = document.getElementById("theme-icon-moon");
+
+    const savedTheme = localStorage.getItem("healthoracle_theme") || "dark";
+    document.documentElement.setAttribute("data-theme", savedTheme);
+    updateThemeIcons(savedTheme);
+
+    if (btnThemeToggle) {
+        btnThemeToggle.addEventListener("click", () => {
+            const currentTheme = document.documentElement.getAttribute("data-theme") || "dark";
+            const newTheme = currentTheme === "dark" ? "light" : "dark";
+            document.documentElement.setAttribute("data-theme", newTheme);
+            localStorage.setItem("healthoracle_theme", newTheme);
+            updateThemeIcons(newTheme);
+        });
+    }
+
+    function updateThemeIcons(theme) {
+        if (!themeIconSun || !themeIconMoon) return;
+        if (theme === "light") {
+            themeIconSun.classList.remove("hidden");
+            themeIconMoon.classList.add("hidden");
+        } else {
+            themeIconSun.classList.add("hidden");
+            themeIconMoon.classList.remove("hidden");
+        }
+    }
+
     let isServerOnline = false;
     let recognition = null;
 
@@ -2937,45 +2968,60 @@ Provide 3-5 specific, medical-grade lifestyle recommendations. Return only a JSO
             btnOllamaQuick.style.opacity = "0.6";
             btnText.textContent = "Checking...";
             
+            let ollamaIsAvailable = false;
+            
             try {
                 // Add cache-busting timestamp to prevent stale responses
                 const response = await fetch(`${BACKEND_URL}/ai/health?t=${new Date().getTime()}`);
                 if (response.ok) {
                     const health = await response.json();
                     console.log("🔍 AI Health check response:", health);
-                    
                     if (health.ollama_running) {
-                        // Switch to Ollama
-                        const config = JSON.parse(localStorage.getItem("healthoracle_ai_config") || "{}");
-                        config.provider = "ollama";
-                        // Use llama3.1:8b as the new default
-                        if (!config.model || config.model === "gemini-2.5-flash" || config.model === "llama3.2:1b") {
-                            config.model = "llama3.1:8b";
-                        }
-                        if (!config.endpoint) {
-                            config.endpoint = "http://127.0.0.1:11434/api/generate";
-                        }
-                        localStorage.setItem("healthoracle_ai_config", JSON.stringify(config));
-                        
-                        // Update UI
-                        loadAiConfig();
-                        
-                        // Immediately trigger prediction if we are on the symptoms/labs step or have enough data
-                        const currentActiveStep = parseInt(document.querySelector(".tab-btn.active")?.getAttribute("data-step") || "1");
-                        if (currentActiveStep >= 2 || validateStepInputs(1)) {
-                            console.log("🚀 Ollama detected. Triggering immediate clinical diagnostic...");
-                            healthForm.dispatchEvent(new Event("submit"));
-                        } else {
-                            alert("✅ Local Ollama detected! Switched to Local Inference Mode. Please complete the form to run diagnostics.");
-                        }
-                    } else {
-                        alert("❌ Ollama unavailable. Please ensure the Ollama service is running on your system.");
+                        ollamaIsAvailable = true;
                     }
-                } else {
-                    alert("❌ Ollama unavailable (Backend communication error).");
                 }
             } catch (err) {
-                alert("❌ Ollama unavailable (Backend offline).");
+                console.log("Backend offline or error checking health, checking direct local Ollama...");
+            }
+            
+            if (!ollamaIsAvailable) {
+                // Double check if running locally on the user's browser-side
+                const localOllama = await checkLocalOllamaDirect();
+                if (localOllama && localOllama.running) {
+                    ollamaIsAvailable = true;
+                }
+            }
+
+            try {
+                if (ollamaIsAvailable) {
+                    // Switch to Ollama
+                    const config = JSON.parse(localStorage.getItem("healthoracle_ai_config") || "{}");
+                    config.provider = "ollama";
+                    // Use llama3.1:8b as the new default
+                    if (!config.model || config.model === "gemini-2.5-flash" || config.model === "llama3.2:1b") {
+                        config.model = "llama3.1:8b";
+                    }
+                    if (!config.endpoint) {
+                        config.endpoint = "http://127.0.0.1:11434/api/generate";
+                    }
+                    localStorage.setItem("healthoracle_ai_config", JSON.stringify(config));
+                    
+                    // Update UI
+                    loadAiConfig();
+                    
+                    // Immediately trigger prediction if we are on the symptoms/labs step or have enough data
+                    const currentActiveStep = parseInt(document.querySelector(".tab-btn.active")?.getAttribute("data-step") || "1");
+                    if (currentActiveStep >= 2 || validateStepInputs(1)) {
+                        console.log("🚀 Ollama detected. Triggering immediate clinical diagnostic...");
+                        healthForm.dispatchEvent(new Event("submit"));
+                    } else {
+                        alert("✅ Local Ollama detected! Switched to Local Inference Mode. Please complete the form to run diagnostics.");
+                    }
+                } else {
+                    alert("❌ Ollama unavailable. Please ensure the Ollama service is running on your system.");
+                }
+            } catch (err) {
+                alert("❌ Ollama unavailable.");
             } finally {
                 btnOllamaQuick.style.opacity = "1";
                 btnText.textContent = "Ollama";
@@ -3006,55 +3052,84 @@ Provide 3-5 specific, medical-grade lifestyle recommendations. Return only a JSO
             aiProviderStatus.style.color = "var(--text-secondary)";
             aiProviderStatus.textContent = "Checking Local Ollama status...";
             
+            let health = null;
             try {
                 // Add cache-busting timestamp to prevent stale responses
                 const response = await fetch(`${BACKEND_URL}/ai/health?t=${new Date().getTime()}`);
                 if (response.ok) {
-                    const health = await response.json();
+                    health = await response.json();
                     console.log("🔍 AI Health check response:", health);
-                    
-                    if (health.ollama_running) {
-                        // Use llama3.1:8b as the default check
-                        const targetModel = inputAiModel.value.trim() || "llama3.1:8b";
-                        if (health.available_models && health.available_models.length > 0) {
-                            const normalizedTarget = targetModel.split(":")[0].toLowerCase();
-                            // Case-insensitive flexible matching
-                            const modelExists = health.available_models.some(m => {
-                                const m_lower = m.toLowerCase();
-                                const m_base = m_lower.split(":")[0];
-                                return m_lower === targetModel.toLowerCase() || m_base === normalizedTarget;
-                            });
+                }
+            } catch (e) {
+                console.log("Backend offline or error checking health, checking direct local Ollama...");
+            }
+            
+            if (health && health.ollama_running) {
+                // Use llama3.1:8b as the default check
+                const targetModel = inputAiModel.value.trim() || "llama3.1:8b";
+                if (health.available_models && health.available_models.length > 0) {
+                    const normalizedTarget = targetModel.split(":")[0].toLowerCase();
+                    // Case-insensitive flexible matching
+                    const modelExists = health.available_models.some(m => {
+                        const m_lower = m.toLowerCase();
+                        const m_base = m_lower.split(":")[0];
+                        return m_lower === targetModel.toLowerCase() || m_base === normalizedTarget;
+                    });
 
-                            if (modelExists) {
-                                aiProviderStatus.style.color = "#34c759";
-                                aiProviderStatus.textContent = "✅ Local Ollama is running and available. Model: " + targetModel;
-                                const ollamaOption = Array.from(inputAiProvider.options).find(o => o.value === "ollama");
-                                if (ollamaOption) ollamaOption.textContent = "Local Ollama Inference";
-                            } else {
-                                aiProviderStatus.style.color = "#ffcc00";
-                                aiProviderStatus.textContent = "⚠️ Ollama is running, but model '" + targetModel + "' is not downloaded. Run 'ollama pull " + targetModel + "'.";
-                                const ollamaOption = Array.from(inputAiProvider.options).find(o => o.value === "ollama");
-                                if (ollamaOption) ollamaOption.textContent = "Local Ollama Inference (Model Missing)";
-                            }
+                    if (modelExists) {
+                        aiProviderStatus.style.color = "#34c759";
+                        aiProviderStatus.textContent = "✅ Local Ollama is running and available. Model: " + targetModel;
+                        const ollamaOption = Array.from(inputAiProvider.options).find(o => o.value === "ollama");
+                        if (ollamaOption) ollamaOption.textContent = "Local Ollama Inference";
+                    } else {
+                        aiProviderStatus.style.color = "#ffcc00";
+                        aiProviderStatus.textContent = "⚠️ Ollama is running, but model '" + targetModel + "' is not downloaded. Run 'ollama pull " + targetModel + "'.";
+                        const ollamaOption = Array.from(inputAiProvider.options).find(o => o.value === "ollama");
+                        if (ollamaOption) ollamaOption.textContent = "Local Ollama Inference (Model Missing)";
+                    }
+                } else {
+                    aiProviderStatus.style.color = "#ffcc00";
+                    aiProviderStatus.textContent = "⚠️ Ollama is running, but no models are downloaded. Run 'ollama pull " + targetModel + "' in your terminal.";
+                    const ollamaOption = Array.from(inputAiProvider.options).find(o => o.value === "ollama");
+                    if (ollamaOption) ollamaOption.textContent = "Local Ollama Inference (No Models)";
+                }
+            } else {
+                // Double check if Ollama is running locally on the user's browser-side
+                const localOllama = await checkLocalOllamaDirect();
+                if (localOllama && localOllama.running) {
+                    const targetModel = inputAiModel.value.trim() || "llama3.1:8b";
+                    if (localOllama.models && localOllama.models.length > 0) {
+                        const normalizedTarget = targetModel.split(":")[0].toLowerCase();
+                        const modelExists = localOllama.models.some(m => {
+                            const m_lower = m.toLowerCase();
+                            const m_base = m_lower.split(":")[0];
+                            return m_lower === targetModel.toLowerCase() || m_base === normalizedTarget;
+                        });
+
+                        if (modelExists) {
+                            aiProviderStatus.style.color = "#34c759";
+                            aiProviderStatus.textContent = "✅ Local Ollama is running (connected directly from browser). Model: " + targetModel;
+                            const ollamaOption = Array.from(inputAiProvider.options).find(o => o.value === "ollama");
+                            if (ollamaOption) ollamaOption.textContent = "Local Ollama Inference";
                         } else {
                             aiProviderStatus.style.color = "#ffcc00";
-                            aiProviderStatus.textContent = "⚠️ Ollama is running, but no models are downloaded. Run 'ollama pull " + targetModel + "' in your terminal.";
+                            aiProviderStatus.textContent = "⚠️ Local Ollama is running directly, but model '" + targetModel + "' is not downloaded. Run 'ollama pull " + targetModel + "'.";
                             const ollamaOption = Array.from(inputAiProvider.options).find(o => o.value === "ollama");
-                            if (ollamaOption) ollamaOption.textContent = "Local Ollama Inference (No Models)";
+                            if (ollamaOption) ollamaOption.textContent = "Local Ollama Inference (Model Missing)";
                         }
                     } else {
-                        aiProviderStatus.style.color = "#ff453a";
-                        aiProviderStatus.textContent = "❌ Local Ollama is unavailable (not running on this system).";
+                        // Either no models, or we hit a CORS no-cors fallback where models list is empty
+                        aiProviderStatus.style.color = "#34c759";
+                        aiProviderStatus.textContent = "✅ Local Ollama is running directly. (Available models list hidden due to local constraints)";
                         const ollamaOption = Array.from(inputAiProvider.options).find(o => o.value === "ollama");
-                        if (ollamaOption) ollamaOption.textContent = "Local Ollama Inference (Unavailable)";
+                        if (ollamaOption) ollamaOption.textContent = "Local Ollama Inference";
                     }
                 } else {
                     aiProviderStatus.style.color = "#ff453a";
-                    aiProviderStatus.textContent = "❌ Local Ollama is unavailable (could not fetch status).";
+                    aiProviderStatus.textContent = "❌ Local Ollama is unavailable (not running on this system).";
+                    const ollamaOption = Array.from(inputAiProvider.options).find(o => o.value === "ollama");
+                    if (ollamaOption) ollamaOption.textContent = "Local Ollama Inference (Unavailable)";
                 }
-            } catch (e) {
-                aiProviderStatus.style.color = "#ff453a";
-                aiProviderStatus.textContent = "❌ Local Ollama is unavailable (backend offline).";
             }
         } else if (provider === "gemini") {
             aiProviderStatus.classList.remove("hidden");

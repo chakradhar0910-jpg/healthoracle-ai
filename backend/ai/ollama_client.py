@@ -13,9 +13,20 @@ from backend.config import OLLAMA_ENDPOINT, OLLAMA_MODEL
 
 log = logging.getLogger("healthoracle.ai.ollama")
 
+def _get_base_url(endpoint: str = None) -> str:
+    url_to_clean = endpoint or OLLAMA_ENDPOINT
+    base_url = url_to_clean
+    for suffix in ["/api/generate", "/api/chat", "/api/tags"]:
+        if base_url.endswith(suffix):
+            base_url = base_url[:-len(suffix)]
+            break
+    if not base_url.endswith("/"):
+        base_url += "/"
+    return base_url
+
 def is_ollama_running(endpoint: str = None) -> bool:
     """Pings the Ollama server to check availability."""
-    base_url = (endpoint or OLLAMA_ENDPOINT).replace("/api/generate", "/")
+    base_url = _get_base_url(endpoint)
     
     # Try the provided/configured URL first
     urls_to_try = [base_url]
@@ -88,15 +99,26 @@ def pull_ollama_model(model_name: str):
 
 def get_ollama_models(endpoint: str = None) -> list[str]:
     """Fetches list of installed models from Ollama."""
-    url = (endpoint or OLLAMA_ENDPOINT).replace("/api/generate", "/api/tags")
-    try:
-        resp = requests.get(url, timeout=5)
-        if resp.status_code == 200:
-            data = resp.json()
-            return [m["name"] for m in data.get("models", [])]
-    except:
-        pass
+    base_url = _get_base_url(endpoint)
+    url = base_url + "api/tags"
+    
+    urls_to_try = [url]
+    if "127.0.0.1" in url:
+        urls_to_try.append(url.replace("127.0.0.1", "localhost"))
+    elif "localhost" in url:
+        urls_to_try.append(url.replace("localhost", "127.0.0.1"))
+
+    for u in urls_to_try:
+        try:
+            resp = requests.get(u, timeout=5)
+            if resp.status_code == 200:
+                data = resp.json()
+                return [m["name"] for m in data.get("models", [])]
+        except Exception as e:
+            log.debug(f"⚠️ Failed to fetch models from {u}: {e}")
+            continue
     return []
+
 
 def call_ollama(prompt: str, endpoint: str = None, model: str = None, is_auto: bool = False) -> str:
     """
