@@ -2,6 +2,37 @@
 
 document.addEventListener("DOMContentLoaded", () => {
     const BACKEND_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" || window.location.protocol === "file:" ? "http://127.0.0.1:8000" : "https://healthoracle-ai.onrender.com";
+
+    // Theme logic
+    const btnThemeToggle = document.getElementById("btn-theme-toggle");
+    const themeIconSun = document.getElementById("theme-icon-sun");
+    const themeIconMoon = document.getElementById("theme-icon-moon");
+
+    const savedTheme = localStorage.getItem("healthoracle_theme") || "dark";
+    document.documentElement.setAttribute("data-theme", savedTheme);
+    updateThemeIcons(savedTheme);
+
+    if (btnThemeToggle) {
+        btnThemeToggle.addEventListener("click", () => {
+            const currentTheme = document.documentElement.getAttribute("data-theme") || "dark";
+            const newTheme = currentTheme === "dark" ? "light" : "dark";
+            document.documentElement.setAttribute("data-theme", newTheme);
+            localStorage.setItem("healthoracle_theme", newTheme);
+            updateThemeIcons(newTheme);
+        });
+    }
+
+    function updateThemeIcons(theme) {
+        if (!themeIconSun || !themeIconMoon) return;
+        if (theme === "light") {
+            themeIconSun.classList.remove("hidden");
+            themeIconMoon.classList.add("hidden");
+        } else {
+            themeIconSun.classList.add("hidden");
+            themeIconMoon.classList.remove("hidden");
+        }
+    }
+
     let isServerOnline = false;
     let recognition = null;
 
@@ -66,6 +97,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const displayAgeSex = document.getElementById("display-age-sex");
     const displayBmi = document.getElementById("display-bmi");
     const displaySymptoms = document.getElementById("display-symptoms");
+    const displayAiSource = document.getElementById("display-ai-source");
 
     // Core Risk Gauges Output (6 Diseases)
     const diabetesBadge = document.getElementById("diabetes-badge");
@@ -642,40 +674,69 @@ document.addEventListener("DOMContentLoaded", () => {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 1200);
 
-            const response = await fetch(`${BACKEND_URL}/`, {
+            // First check the actual backend
+            const response = await fetch(`${BACKEND_URL}/ai/health?t=${new Date().getTime()}`, {
                 method: "GET",
                 signal: controller.signal
             });
             clearTimeout(timeoutId);
 
             if (response.ok) {
+                const health = await response.json();
                 isServerOnline = true;
-                updateStatusBadge("ready");
+                
+                // If backend says Ollama is off, double check if it's running locally on the user's browser-side
+                if (!health.ollama_running) {
+                    const localOllama = await checkLocalOllamaDirect();
+                    updateStatusBadge("ready", localOllama);
+                } else {
+                    updateStatusBadge("ready", true);
+                }
             } else {
                 isServerOnline = false;
-                updateStatusBadge("warm");
+                updateStatusBadge("warm", false);
             }
         } catch (e) {
+            // Even if backend is totally offline, we might still have local Ollama
+            const localOllama = await checkLocalOllamaDirect();
             isServerOnline = false;
-            updateStatusBadge("warm");
+            updateStatusBadge("warm", localOllama);
         }
     }
 
-    function updateStatusBadge(state) {
+    async function checkLocalOllamaDirect() {
+        try {
+            // Using /api/tags to get the list of models as a health check
+            const resp = await fetch("http://127.0.0.1:11434/api/tags");
+            if (resp.ok) {
+                const data = await resp.json();
+                return { running: true, models: data.models.map(m => m.name) };
+            }
+        } catch(e) {
+            // Fallback for CORS blocks - if it throws an error but it's a TypeError, it might still be there
+            try {
+                const resp = await fetch("http://127.0.0.1:11434/api/tags", { mode: "no-cors" });
+                return { running: true, models: [] }; 
+            } catch(e2) {}
+        }
+        return { running: false, models: [] };
+    }
+
+    function updateStatusBadge(state, ollamaRunning = false) {
         const dot = apiStatus.querySelector(".status-indicator-dot");
         const lbl = apiStatus.querySelector(".status-label");
 
         if (state === "ready") {
             dot.className = "status-indicator-dot dot-ready";
-            lbl.textContent = "AI Server Connected";
+            lbl.textContent = ollamaRunning ? "AI Server (Local Ollama Online)" : "AI Server Connected";
         } else {
             dot.className = "status-indicator-dot dot-warm";
-            lbl.textContent = "Offline Preview Mode";
+            lbl.textContent = ollamaRunning ? "Local-Only Mode (Ollama Online)" : "Offline Preview Mode";
         }
     }
 
     checkServerStatus();
-    setInterval(checkServerStatus, 10000);
+    setInterval(checkServerStatus, 15000);
 
     // 7. Form Submit & Diagnostics Compiler
     healthForm.addEventListener("submit", async (e) => {
@@ -741,6 +802,8 @@ document.addEventListener("DOMContentLoaded", () => {
         const weight = parseFloat(weightInput.value);
         const familyDiabetes = document.querySelector('input[name="family_diabetes"]:checked').value;
         const familyHeart = document.querySelector('input[name="family_heart"]:checked').value;
+        const familyKidney = document.querySelector('input[name="family_kidney"]:checked')?.value || "None";
+        const familyCancer = document.querySelector('input[name="family_cancer"]:checked')?.value || "None";
         const sleepHours = parseFloat(sleepInput.value);
         const dietQuality = parseInt(dietInput.value);
         const stressLevel = parseInt(stressInput.value);
@@ -762,6 +825,7 @@ document.addEventListener("DOMContentLoaded", () => {
             patientName: nameInput.value,
             mrn: mrnInput.value,
             age, gender, bp, height, weight, familyDiabetes, familyHeart,
+            familyKidney, familyCancer,
             sleepHours, dietQuality, stressLevel, smoking, physicalActivity, alcohol,
             systolic, diastolic, glucose, hba1c, cholesterol, ldl, hdl, triglycerides,
             symptoms: activeSymptoms,
@@ -773,34 +837,128 @@ document.addEventListener("DOMContentLoaded", () => {
         clearInterval(stageInterval);
 
         let results = null;
+        let usedFallback = false;
 
-        if (isServerOnline) {
-            try {
-                const response = await fetch(`${BACKEND_URL}/predict`, {
-                    method: "POST",
-                    headers: { 
-                        "Content-Type": "application/json",
-                        ...getAIHeaders()
-                    },
-                    body: JSON.stringify(payload)
-                });
-                if (response.ok) {
-                    results = await response.json();
+        try {
+            const aiConfig = getAIHeaders();
+            const isOllamaSelected = aiConfig["X-AI-Provider"] === "ollama";
+            const isRemoteBackend = !BACKEND_URL.includes("localhost") && !BACKEND_URL.includes("127.0.0.1");
+
+            if (isServerOnline) {
+                let response;
+                if (isOllamaSelected && isRemoteBackend) {
+                    console.log("🌐 Remote deployment detected. Routing Ollama inference to local browser agent...");
+                    // 1. Get ML scores from backend first
+                    const mlHeaders = { ...aiConfig };
+                    mlHeaders["X-AI-Provider"] = "none"; 
+
+                    response = await fetch(`${BACKEND_URL}/predict`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json", ...mlHeaders },
+                        body: JSON.stringify(payload)
+                    });
+                    
+                    if (response.ok) {
+                        results = await response.json();
+                        // 2. Perform Ollama inference locally from browser
+                        const localRecs = await generateOllamaRecommendationsLocal(payload, results);
+                        if (localRecs) {
+                            results.recommendations = localRecs;
+                            usedFallback = false;
+                        }
+                    }
                 } else {
-                    results = compileLocalClinicalInference(payload);
+                    // Standard routing via backend
+                    response = await fetch(`${BACKEND_URL}/predict`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json", ...aiConfig },
+                        body: JSON.stringify(payload)
+                    });
+                    if (response.ok) {
+                        results = await response.json();
+                    }
                 }
-            } catch (err) {
+            } else if (isOllamaSelected) {
+                // Backend offline but Ollama might be local
+                console.log("ℹ️ Server offline, attempting direct Local Ollama inference...");
                 results = compileLocalClinicalInference(payload);
+                const localRecs = await generateOllamaRecommendationsLocal(payload, results);
+                if (localRecs) results.recommendations = localRecs;
+                usedFallback = false; // We have real AI recs!
             }
-        } else {
+
+            if (!results) {
+                console.warn("⚠️ AI Response not OK, using local clinical fallback.");
+                results = compileLocalClinicalInference(payload);
+                usedFallback = true;
+            }
+        } catch (err) {
+            console.error("⚠️ AI Communication error, using local clinical fallback.", err);
             results = compileLocalClinicalInference(payload);
+            usedFallback = true;
         }
 
         resultsLoading.classList.add("hidden");
         resultsDashboard.classList.remove("hidden");
 
-        renderResultsDashboard(results, payload);
+        renderResultsDashboard(results, payload, usedFallback);
     });
+
+    async function generateOllamaRecommendationsLocal(payload, mlResults) {
+        try {
+            const config = JSON.parse(localStorage.getItem("healthoracle_ai_config") || "{}");
+            const endpoint = config.endpoint || "http://127.0.0.1:11434/api/chat";
+            const model = config.model || "llama3.1:8b";
+            
+            const prompt = `As a Clinical AI, analyze this patient data:
+Name: ${payload.patientName}, Age: ${payload.age}, Sex: ${payload.gender}
+ML Risk Scores: 
+- Diabetes: ${mlResults.predictions.diabetes.probability}%
+- Cardiovascular: ${mlResults.predictions.heart_disease.probability}%
+- Stroke: ${mlResults.predictions.stroke_risk.probability}%
+Symptoms: ${payload.symptoms.join(", ")}
+Vitals: BP ${payload.systolic}/${payload.diastolic}, Glucose ${payload.glucose}, HbA1c ${payload.hba1c}
+
+Provide 3-5 specific, medical-grade lifestyle recommendations. Return only a JSON array of strings.`;
+
+            let body = {};
+            if (endpoint.endsWith("/chat")) {
+                body = {
+                    model: model,
+                    messages: [{ role: "user", content: prompt }],
+                    stream: false,
+                    format: "json"
+                };
+            } else {
+                body = {
+                    model: model,
+                    prompt: prompt,
+                    stream: false,
+                    format: "json"
+                };
+            }
+
+            const response = await fetch(endpoint, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(body)
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                const text = endpoint.endsWith("/chat") ? data.message.content : data.response;
+                try {
+                    const parsed = JSON.parse(text);
+                    return Array.isArray(parsed) ? parsed : (parsed.recommendations || [text]);
+                } catch(e) {
+                    return [text];
+                }
+            }
+        } catch (e) {
+            console.error("Local Ollama inference failed:", e);
+        }
+        return null;
+    }
 
     // 8. Hospital-Grade Clinical Inference Engine (6 Diseases + SHAP + Genetic Multipliers)
     function compileLocalClinicalInference(data) {
@@ -1161,12 +1319,25 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // 9. Display Report in Dashboard (6 Diseases, Genetic Badges, Cohorts, Calibration, Coaching, Timeline)
-    function renderResultsDashboard(data, inputs) {
+    function renderResultsDashboard(data, inputs, usedFallback = false) {
         // --- A. PATIENT RECORD DETAILS ---
         displayName.textContent = inputs.patientName;
         displayMrn.textContent = inputs.mrn;
         displayAgeSex.textContent = `${inputs.age} / ${inputs.gender}`;
         
+        // Display AI Source
+        const config = JSON.parse(localStorage.getItem("healthoracle_ai_config") || "{}");
+        let providerName = config.provider === "ollama" ? "Local Ollama Inference" : 
+                            (config.provider === "openai" ? "Custom OpenAI Endpoint" : "Cloud Gemini (Standard)");
+        
+        if (usedFallback) {
+            providerName += " [OFFLINE FALLBACK]";
+            displayAiSource.style.color = "var(--system-orange)";
+        } else {
+            displayAiSource.style.color = config.provider === "ollama" ? "var(--system-green)" : "var(--system-blue)";
+        }
+        displayAiSource.textContent = providerName;
+
         const heightInMeters = inputs.height / 100;
         const bmi = inputs.weight / (heightInMeters * heightInMeters);
         const bmiFixed = bmi.toFixed(1);
@@ -2008,6 +2179,10 @@ document.addEventListener("DOMContentLoaded", () => {
             history = JSON.parse(localStorage.getItem("healthoracle_assessments_history")) || [];
         } catch(e) {}
         
+        const config = JSON.parse(localStorage.getItem("healthoracle_ai_config") || "{}");
+        const providerName = config.provider === "ollama" ? "Ollama" : 
+                            (config.provider === "openai" ? "Custom" : "Gemini");
+
         const entry = {
             mrn: payload.mrn || "Unknown",
             name: payload.patientName || "Unknown",
@@ -2016,6 +2191,7 @@ document.addEventListener("DOMContentLoaded", () => {
             date: new Date().toLocaleDateString(),
             predictions: results.predictions,
             payload_json: JSON.stringify(payload),
+            ai_provider: providerName,
             timestamp: new Date().getTime()
         };
         
@@ -2106,7 +2282,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 diabetes: "Diabetes", heart_disease: "Cardiac", kidney_disease: "Kidney",
                 liver_disease: "Liver", stroke_risk: "Stroke", cancer_prescreen: "Cancer"
             };
-            const subtitleText = `${entry.date} • Max Risk: ${maxProb}% (${diseaseMapShort[maxDisease] || maxDisease}) • Age ${entry.age}`;
+            const providerTag = entry.ai_provider ? `<span style="font-size:0.6rem; background:rgba(255,255,255,0.1); padding:1px 4px; border-radius:3px; margin-left:5px; color:var(--system-blue);">${entry.ai_provider}</span>` : "";
+            const subtitleText = `${entry.date} • Max Risk: ${maxProb}% (${diseaseMapShort[maxDisease] || maxDisease}) • Age ${entry.age}${providerTag}`;
 
             item.innerHTML = `
                 <div class="journal-item-meta">
@@ -2780,6 +2957,78 @@ document.addEventListener("DOMContentLoaded", () => {
         return headers;
     }
 
+    // Quick Ollama Toggle Logic
+    const btnOllamaQuick = document.getElementById("btn-ollama-quick");
+    if (btnOllamaQuick) {
+        btnOllamaQuick.addEventListener("click", async () => {
+            const btnIcon = btnOllamaQuick.querySelector("i");
+            const btnText = btnOllamaQuick.querySelector("span");
+            
+            // Visual feedback
+            btnOllamaQuick.style.opacity = "0.6";
+            btnText.textContent = "Checking...";
+            
+            let ollamaIsAvailable = false;
+            
+            try {
+                // Add cache-busting timestamp to prevent stale responses
+                const response = await fetch(`${BACKEND_URL}/ai/health?t=${new Date().getTime()}`);
+                if (response.ok) {
+                    const health = await response.json();
+                    console.log("🔍 AI Health check response:", health);
+                    if (health.ollama_running) {
+                        ollamaIsAvailable = true;
+                    }
+                }
+            } catch (err) {
+                console.log("Backend offline or error checking health, checking direct local Ollama...");
+            }
+            
+            if (!ollamaIsAvailable) {
+                // Double check if running locally on the user's browser-side
+                const localOllama = await checkLocalOllamaDirect();
+                if (localOllama && localOllama.running) {
+                    ollamaIsAvailable = true;
+                }
+            }
+
+            try {
+                if (ollamaIsAvailable) {
+                    // Switch to Ollama
+                    const config = JSON.parse(localStorage.getItem("healthoracle_ai_config") || "{}");
+                    config.provider = "ollama";
+                    // Use llama3.1:8b as the new default
+                    if (!config.model || config.model === "gemini-2.5-flash" || config.model === "llama3.2:1b") {
+                        config.model = "llama3.1:8b";
+                    }
+                    if (!config.endpoint) {
+                        config.endpoint = "http://127.0.0.1:11434/api/generate";
+                    }
+                    localStorage.setItem("healthoracle_ai_config", JSON.stringify(config));
+                    
+                    // Update UI
+                    loadAiConfig();
+                    
+                    // Immediately trigger prediction if we are on the symptoms/labs step or have enough data
+                    const currentActiveStep = parseInt(document.querySelector(".tab-btn.active")?.getAttribute("data-step") || "1");
+                    if (currentActiveStep >= 2 || validateStepInputs(1)) {
+                        console.log("🚀 Ollama detected. Triggering immediate clinical diagnostic...");
+                        healthForm.dispatchEvent(new Event("submit"));
+                    } else {
+                        alert("✅ Local Ollama detected! Switched to Local Inference Mode. Please complete the form to run diagnostics.");
+                    }
+                } else {
+                    alert("❌ Ollama unavailable. Please ensure the Ollama service is running on your system.");
+                }
+            } catch (err) {
+                alert("❌ Ollama unavailable.");
+            } finally {
+                btnOllamaQuick.style.opacity = "1";
+                btnText.textContent = "Ollama";
+            }
+        });
+    }
+
     // AI Settings Modal logic
     const btnAiSettings = document.getElementById("btn-ai-settings");
     const aiSettingsModal = document.getElementById("ai-settings-modal");
@@ -2791,6 +3040,120 @@ document.addEventListener("DOMContentLoaded", () => {
     const inputAiEndpoint = document.getElementById("ai-endpoint");
     const inputAiKey = document.getElementById("ai-key");
     const inputAiModel = document.getElementById("ai-model");
+    const aiProviderStatus = document.getElementById("ai-provider-status");
+
+    async function checkAIProviderStatus(provider) {
+        if (!aiProviderStatus) return;
+        aiProviderStatus.classList.add("hidden");
+        aiProviderStatus.textContent = "";
+
+        if (provider === "ollama") {
+            aiProviderStatus.classList.remove("hidden");
+            aiProviderStatus.style.color = "var(--text-secondary)";
+            aiProviderStatus.textContent = "Checking Local Ollama status...";
+            
+            let health = null;
+            try {
+                // Add cache-busting timestamp to prevent stale responses
+                const response = await fetch(`${BACKEND_URL}/ai/health?t=${new Date().getTime()}`);
+                if (response.ok) {
+                    health = await response.json();
+                    console.log("🔍 AI Health check response:", health);
+                }
+            } catch (e) {
+                console.log("Backend offline or error checking health, checking direct local Ollama...");
+            }
+            
+            if (health && health.ollama_running) {
+                // Use llama3.1:8b as the default check
+                const targetModel = inputAiModel.value.trim() || "llama3.1:8b";
+                if (health.available_models && health.available_models.length > 0) {
+                    const normalizedTarget = targetModel.split(":")[0].toLowerCase();
+                    // Case-insensitive flexible matching
+                    const modelExists = health.available_models.some(m => {
+                        const m_lower = m.toLowerCase();
+                        const m_base = m_lower.split(":")[0];
+                        return m_lower === targetModel.toLowerCase() || m_base === normalizedTarget;
+                    });
+
+                    if (modelExists) {
+                        aiProviderStatus.style.color = "#34c759";
+                        aiProviderStatus.textContent = "✅ Local Ollama is running and available. Model: " + targetModel;
+                        const ollamaOption = Array.from(inputAiProvider.options).find(o => o.value === "ollama");
+                        if (ollamaOption) ollamaOption.textContent = "Local Ollama Inference";
+                    } else {
+                        aiProviderStatus.style.color = "#ffcc00";
+                        aiProviderStatus.textContent = "⚠️ Ollama is running, but model '" + targetModel + "' is not downloaded. Run 'ollama pull " + targetModel + "'.";
+                        const ollamaOption = Array.from(inputAiProvider.options).find(o => o.value === "ollama");
+                        if (ollamaOption) ollamaOption.textContent = "Local Ollama Inference (Model Missing)";
+                    }
+                } else {
+                    aiProviderStatus.style.color = "#ffcc00";
+                    aiProviderStatus.textContent = "⚠️ Ollama is running, but no models are downloaded. Run 'ollama pull " + targetModel + "' in your terminal.";
+                    const ollamaOption = Array.from(inputAiProvider.options).find(o => o.value === "ollama");
+                    if (ollamaOption) ollamaOption.textContent = "Local Ollama Inference (No Models)";
+                }
+            } else {
+                // Double check if Ollama is running locally on the user's browser-side
+                const localOllama = await checkLocalOllamaDirect();
+                if (localOllama && localOllama.running) {
+                    const targetModel = inputAiModel.value.trim() || "llama3.1:8b";
+                    if (localOllama.models && localOllama.models.length > 0) {
+                        const normalizedTarget = targetModel.split(":")[0].toLowerCase();
+                        const modelExists = localOllama.models.some(m => {
+                            const m_lower = m.toLowerCase();
+                            const m_base = m_lower.split(":")[0];
+                            return m_lower === targetModel.toLowerCase() || m_base === normalizedTarget;
+                        });
+
+                        if (modelExists) {
+                            aiProviderStatus.style.color = "#34c759";
+                            aiProviderStatus.textContent = "✅ Local Ollama is running (connected directly from browser). Model: " + targetModel;
+                            const ollamaOption = Array.from(inputAiProvider.options).find(o => o.value === "ollama");
+                            if (ollamaOption) ollamaOption.textContent = "Local Ollama Inference";
+                        } else {
+                            aiProviderStatus.style.color = "#ffcc00";
+                            aiProviderStatus.textContent = "⚠️ Local Ollama is running directly, but model '" + targetModel + "' is not downloaded. Run 'ollama pull " + targetModel + "'.";
+                            const ollamaOption = Array.from(inputAiProvider.options).find(o => o.value === "ollama");
+                            if (ollamaOption) ollamaOption.textContent = "Local Ollama Inference (Model Missing)";
+                        }
+                    } else {
+                        // Either no models, or we hit a CORS no-cors fallback where models list is empty
+                        aiProviderStatus.style.color = "#34c759";
+                        aiProviderStatus.textContent = "✅ Local Ollama is running directly. (Available models list hidden due to local constraints)";
+                        const ollamaOption = Array.from(inputAiProvider.options).find(o => o.value === "ollama");
+                        if (ollamaOption) ollamaOption.textContent = "Local Ollama Inference";
+                    }
+                } else {
+                    aiProviderStatus.style.color = "#ff453a";
+                    aiProviderStatus.textContent = "❌ Local Ollama is unavailable (not running on this system).";
+                    const ollamaOption = Array.from(inputAiProvider.options).find(o => o.value === "ollama");
+                    if (ollamaOption) ollamaOption.textContent = "Local Ollama Inference (Unavailable)";
+                }
+            }
+        } else if (provider === "gemini") {
+            aiProviderStatus.classList.remove("hidden");
+            try {
+                const response = await fetch(`${BACKEND_URL}/ai/health`);
+                if (response.ok) {
+                    const health = await response.json();
+                    if (health.gemini_available || inputAiKey.value.trim() !== "") {
+                        aiProviderStatus.style.color = "#34c759";
+                        aiProviderStatus.textContent = "✅ Cloud Gemini is configured and ready.";
+                    } else {
+                        aiProviderStatus.style.color = "#ffcc00";
+                        aiProviderStatus.textContent = "⚠️ Cloud Gemini API key is not configured in backend/settings.";
+                    }
+                } else {
+                    aiProviderStatus.style.color = "#ffcc00";
+                    aiProviderStatus.textContent = "⚠️ Could not verify Cloud Gemini configuration status.";
+                }
+            } catch (e) {
+                aiProviderStatus.style.color = "#ffcc00";
+                aiProviderStatus.textContent = "⚠️ Backend offline, assuming Cloud Gemini is standard.";
+            }
+        }
+    }
 
     // Load AI configurations from LocalStorage
     function loadAiConfig() {
@@ -2800,6 +3163,7 @@ document.addEventListener("DOMContentLoaded", () => {
         inputAiKey.value = config.key || "";
         inputAiModel.value = config.model || "";
         toggleEndpointKeyFields(config.provider || "gemini");
+        checkAIProviderStatus(config.provider || "gemini");
     }
 
     function toggleEndpointKeyFields(provider) {
@@ -2813,9 +3177,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 inputAiEndpoint.value = "http://127.0.0.1:11434/api/generate";
             }
             inputAiKey.placeholder = "Omit for local deployment (no auth)";
-            inputAiModel.placeholder = "e.g. llama3.2:1b";
-            if (!inputAiModel.value || inputAiModel.value === "llama3") {
-                inputAiModel.value = "llama3.2:1b";
+            inputAiModel.placeholder = "e.g. llama3.1:8b";
+            if (!inputAiModel.value || inputAiModel.value === "llama3" || inputAiModel.value === "llama3.2:1b") {
+                inputAiModel.value = "llama3.1:8b";
             }
         } else {
             inputAiEndpoint.placeholder = "e.g. https://api.openai.com/v1/chat/completions";
@@ -2827,6 +3191,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (inputAiProvider) {
         inputAiProvider.addEventListener("change", (e) => {
             toggleEndpointKeyFields(e.target.value);
+            checkAIProviderStatus(e.target.value);
         });
     }
 

@@ -49,9 +49,21 @@
                     <option value="de">Deutsch (German)</option>
                 </select>
 
+                <!-- Quick Ollama Toggle Button -->
+                <button type="button" id="btn-ollama-quick" class="header-icon-btn no-print" title="Switch to Local Ollama" aria-label="Switch to Local Ollama">
+                    <i data-lucide="zap"></i>
+                    <span style="font-size: 0.7rem; font-weight: 600; margin-left: 2px;">Ollama</span>
+                </button>
+
                 <!-- AI Settings Cog -->
                 <button type="button" id="btn-ai-settings" class="header-icon-btn no-print" title="Configure AI Provider" aria-label="Configure AI Provider">
                     <i data-lucide="settings"></i>
+                </button>
+
+                <!-- Dark/Light Theme Toggle -->
+                <button type="button" id="btn-theme-toggle" class="header-icon-btn no-print" title="Toggle Light/Dark Theme" aria-label="Toggle Light/Dark Theme">
+                    <i data-lucide="sun" id="theme-icon-sun" class="hidden"></i>
+                    <i data-lucide="moon" id="theme-icon-moon"></i>
                 </button>
 
                 <div class="remember-pill">
@@ -644,6 +656,10 @@
                                 <span class="p-info-lbl">Active Symptoms:</span>
                                 <span class="p-info-val" id="display-symptoms">None documented</span>
                             </div>
+                            <div class="p-info-row" style="border-top: 1px solid rgba(255, 255, 255, 0.05); padding-top: 8px; margin-top: 4px;">
+                                <span class="p-info-lbl">AI Provider Source:</span>
+                                <span class="p-info-val bold-text" id="display-ai-source" style="color: var(--system-blue);">Standard Ensemble (Local)</span>
+                            </div>
                         </div>
                     </div>
 
@@ -1233,6 +1249,7 @@
                         <option value="ollama">Local Ollama Inference</option>
                         <option value="openai">Custom OpenAI-Compatible Endpoint</option>
                     </select>
+                    <div id="ai-provider-status" class="helper-text mt-1 hidden" style="font-weight: 500;"></div>
                 </div>
 
                 <div class="field-item mb-3">

@@ -5,8 +5,9 @@ Implements strict routing, auto-discovery, and debug logging.
 """
 
 import logging
-from backend.ai.ollama_client import is_ollama_running, get_ollama_models, call_ollama
+from backend.ai.ollama_client import is_ollama_running, get_ollama_models, call_ollama, try_start_ollama, pull_ollama_model
 from backend.ai.gemini_client import call_gemini
+from backend.ai.openai_client import call_openai
 
 log = logging.getLogger("healthoracle.ai.selector")
 
@@ -25,10 +26,50 @@ def route_ai_request(
     log.info(f"[INFO] Provider selected: {selected_provider}")
 
     if selected_provider == "ollama":
-        return call_ollama(prompt, endpoint=endpoint, model=model)
-    
+        if not is_ollama_running(endpoint):
+            if not try_start_ollama():
+                log.warning("⚠️ Ollama selected but could not be started.")
+                return "[ERROR] Ollama is unavailable on this system. Please start it manually."
+
+        # Check if model is downloaded
+        from backend.config import OLLAMA_MODEL
+        target_model = model or OLLAMA_MODEL
+        models = get_ollama_models(endpoint)
+
+        if models:
+            # Flexible matching: check for exact match or base name match
+            # e.g. "llama3.2:1b" matches "llama3.2:1b" or "llama3.2"
+            normalized_target = target_model.split(":")[0].lower()
+            model_exists = False
+
+            log.info(f"🔎 Checking for model '{target_model}' in: {models}")
+
+            for m in models:
+                m_lower = m.lower()
+                m_base = m_lower.split(":")[0]
+
+                if m_lower == target_model.lower() or m_base == normalized_target:
+                    model_exists = True
+                    # If we found a base match but it's different, use the one the user has
+                    target_model = m 
+                    break
+
+            if not model_exists:
+                log.info(f"📥 Model '{target_model}' missing. Triggering auto-pull...")
+                pull_ollama_model(target_model)
+                return f"[ERROR] Model '{target_model}' is being downloaded. Please wait 1-2 minutes and try again."
+        else:
+            # If we are here, Ollama is running but has NO models
+            log.info(f"📥 No models found. Triggering pull for '{target_model}'...")
+            pull_ollama_model(target_model)
+            return f"[ERROR] Downloading model '{target_model}'... Please wait 1-2 minutes and try again."
+
+        return call_ollama(prompt, endpoint, target_model)
     elif selected_provider == "gemini":
         return call_gemini(prompt, api_key=api_key)
+        
+    elif selected_provider == "openai":
+        return call_openai(prompt, api_key=api_key, endpoint=endpoint, model=model)
     
     elif selected_provider == "auto":
         # 1. Check if Ollama is running

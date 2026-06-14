@@ -36,7 +36,7 @@ import logging
 
 log = logging.getLogger("healthoracle.api")
 
-from backend.config import CORS_ALLOW_CREDENTIALS, CORS_ORIGINS
+from backend.config import CORS_ALLOW_CREDENTIALS, CORS_ORIGINS, DEFAULT_AI_PROVIDER
 from backend.ai.logic import ai_chat_completion, generate_ai_recommendations
 from backend.ai.router import router as ai_router
 from backend.database import get_assessments, get_db, init_db, save_assessment
@@ -125,7 +125,7 @@ async def predict(request: Request, payload: PatientPayload, db: Session = Depen
     Accepts patient biometric data and returns risk probabilities for 6 diseases,
     explainable XAI SHAP factors, recommendations, and persists the assessment record.
     """
-    provider = request.headers.get("X-AI-Provider", "gemini")
+    provider = request.headers.get("X-AI-Provider") or DEFAULT_AI_PROVIDER
     api_key = request.headers.get("X-AI-Key")
     endpoint = request.headers.get("X-AI-Endpoint")
     model = request.headers.get("X-AI-Model")
@@ -308,7 +308,10 @@ async def predict(request: Request, payload: PatientPayload, db: Session = Depen
         if ai_recs:
             recommendations = ai_recs
         else:
-            recommendations = generate_recommendations(payload, resolved, db_risk, hd_risk)
+            if provider == "ollama":
+                recommendations = ["Local Ollama Inference: Unavailable"]
+            else:
+                recommendations = generate_recommendations(payload, resolved, db_risk, hd_risk)
 
         # 7. Formulate API Response supporting 6 diseases
         response = {
@@ -370,7 +373,7 @@ async def ocr_upload(request: Request, file: UploadFile = File(...)):
     Uploader for PDF/Image blood report files.
     Applies OCR parsing and regex capture to identify and auto-fill clinical lab panels.
     """
-    provider = request.headers.get("X-AI-Provider", "gemini")
+    provider = request.headers.get("X-AI-Provider") or DEFAULT_AI_PROVIDER
     api_key = request.headers.get("X-AI-Key")
     endpoint = request.headers.get("X-AI-Endpoint")
     model = request.headers.get("X-AI-Model")
@@ -404,7 +407,7 @@ async def chat(request: Request, payload: ChatRequest):
     Interactive pre-screening chatbot assistant.
     Responds dynamically using historical conversation turns for context.
     """
-    provider = request.headers.get("X-AI-Provider", "gemini")
+    provider = request.headers.get("X-AI-Provider") or DEFAULT_AI_PROVIDER
     api_key = request.headers.get("X-AI-Key")
     endpoint = request.headers.get("X-AI-Endpoint")
     model = request.headers.get("X-AI-Model")
@@ -421,6 +424,8 @@ async def chat(request: Request, payload: ChatRequest):
             endpoint=endpoint,
             model=model,
         )
+        if provider == "ollama" and ("[ERROR]" in response_text or "Ollama is unavailable" in response_text):
+            response_text = "Local Ollama Inference: Unavailable. Please ensure Ollama is running on your system."
         return {"response": response_text}
     except Exception as e:
         log.error("❌ Chat completion failed: %s", e, exc_info=True)

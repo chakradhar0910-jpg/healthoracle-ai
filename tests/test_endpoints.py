@@ -161,7 +161,7 @@ def test_ai_settings_headers_routing():
     """Verify that custom X-AI-* headers flow correctly to the LLM backend in /predict."""
     from unittest.mock import patch
 
-    with patch("backend.gemini.call_llm") as mock_call:
+    with patch("backend.ai.logic.route_ai_request") as mock_call:
         mock_call.return_value = '["Urgent: Consult endocrinologist", "Reduce sugar intake"]'
 
         headers = {
@@ -211,7 +211,7 @@ def test_chat_ai_headers_routing():
     """Verify that custom X-AI-* headers flow correctly to the LLM backend in /chat."""
     from unittest.mock import patch
 
-    with patch("backend.gemini.call_llm") as mock_call:
+    with patch("backend.ai.logic.route_ai_request") as mock_call:
         mock_call.return_value = "Hello patient!"
 
         headers = {
