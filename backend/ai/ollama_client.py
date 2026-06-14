@@ -119,7 +119,6 @@ def get_ollama_models(endpoint: str = None) -> list[str]:
             continue
     return []
 
-
 def call_ollama(prompt: str, endpoint: str = None, model: str = None, is_auto: bool = False) -> str:
     """
     Strict Ollama API caller.

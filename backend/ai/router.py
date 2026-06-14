@@ -10,6 +10,7 @@ from backend.ai.ollama_client import is_ollama_running, get_ollama_models
 from backend.config import GEMINI_API_KEY, OLLAMA_ENDPOINT
 
 log = logging.getLogger("healthoracle.ai.router")
+
 router = APIRouter(prefix="/ai", tags=["AI Status"])
 
 @router.get("/health")
